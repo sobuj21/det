@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Extractor & Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
         .copy-btn.copied {
             background-color: #22c55e;
@@ -67,6 +68,59 @@
             cursor: pointer;
             user-select: none;
         }
+        #imageUploadLabel {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s ease;
+            display: inline-block;
+            text-align: center;
+        }
+        #imageUploadLabel:hover {
+             background-color: #2563eb;
+        }
+        #imageInput {
+            display: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .processing {
+             opacity: 0.7;
+             cursor: not-allowed;
+        }
+        /* Drag and Drop Styles */
+        #dropZone {
+            border: 2px dashed #cbd5e1; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1.5rem; /* p-6 */
+            text-align: center;
+            background-color: #f9fafb; /* gray-50 */
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #dropZone.dragover {
+            background-color: #dbeafe; /* blue-100 */
+            border-color: #60a5fa; /* blue-400 */
+        }
+        #dropZone p {
+             color: #6b7280; /* gray-500 */
+             margin-bottom: 0.75rem; /* mb-3 */
+        }
+
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,16 +130,39 @@
     <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl">
         <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-700" title="Click to reset form">Data Extractor & Formatter</h1>
 
+        <div class="mb-4 border-b border-gray-200">
+             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+             </nav>
+        </div>
+
         <div class="mb-4">
             <label for="dataInput" class="block text-sm font-medium text-gray-700 mb-1">Paste your data here:</label>
             <div class="flex items-center space-x-2">
-                <textarea id="dataInput" rows="8" class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-y" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;Your custom text: WAY TO GO ROMEO&#10;Text Color: MATTE BLACK (#28282B)&#10;Text Outline Color: MATTE RED (#B33F40)&#10;Size: 20 INCHES LONG 3 INCH HEIGHT"></textarea>
+                <textarea id="dataInput" rows="6" class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-y" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;..."></textarea>
                 <button id="pasteButton" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out text-sm">Paste</button>
             </div>
         </div>
 
+        <div class="my-4 flex items-center">
+             <div class="flex-grow border-t border-gray-300"></div>
+             <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
+             <div class="flex-grow border-t border-gray-300"></div>
+         </div>
+
+        <div id="dropZone" class="mb-6">
+             <p class="text-sm">Drag & Drop an image here</p>
+             <label for="imageInput" id="imageUploadLabel">Choose Image</label>
+             <input type="file" id="imageInput" accept="image/*">
+             <span id="fileName" class="block text-sm text-gray-600 italic mt-2">No file chosen</span>
+             <p class="text-xs text-gray-500 mt-1">Image text will be extracted on submit. Accuracy depends on image quality.</p>
+        </div>
+
+
         <div class="flex justify-end mb-6">
-             <button id="submitButton" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out font-medium">Submit</button>
+             <button id="submitButton" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out font-medium flex items-center justify-center">
+                 <span>Submit</span>
+                 <div id="submitSpinner" class="loader hidden ml-2"></div>
+             </button>
         </div>
 
         <div id="outputSection" class="space-y-4 hidden">
@@ -119,8 +196,14 @@
         const copyFilenameButton = document.getElementById('copyFilenameButton');
         const messageBox = document.getElementById('messageBox');
         const pageTitle = document.getElementById('pageTitle');
+        const imageInput = document.getElementById('imageInput');
+        const fileNameSpan = document.getElementById('fileName');
+        const submitSpinner = document.getElementById('submitSpinner');
+        const dropZone = document.getElementById('dropZone'); // Get the drop zone element
 
-        function showMessage(text, isError = false, duration = 2000) {
+        let selectedFile = null;
+
+        function showMessage(text, isError = false, duration = 3000) {
             messageBox.textContent = text;
             messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-600' : 'text-green-600'}`;
             messageBox.classList.remove('hidden');
@@ -131,6 +214,18 @@
                 messageBox.classList.add('hidden');
                 messageBox.timeoutId = null;
             }, duration);
+        }
+
+        function showProcessingState(isProcessing) {
+             if (isProcessing) {
+                 submitButton.disabled = true;
+                 submitButton.classList.add('processing');
+                 submitSpinner.classList.remove('hidden');
+             } else {
+                 submitButton.disabled = false;
+                 submitButton.classList.remove('processing');
+                 submitSpinner.classList.add('hidden');
+             }
         }
 
         async function copyToClipboard(textToCopy, buttonElement) {
@@ -288,11 +383,115 @@
             return div;
         }
 
+        function processInputText(inputText) {
+             if (!inputText || !inputText.trim()) {
+                 showMessage('Input text is empty after OCR or initial input.', true);
+                 outputSection.classList.add('hidden');
+                 return;
+             }
+
+             extractedInfoDiv.innerHTML = '';
+             filenameOutputDiv.textContent = '';
+             filenameOutputDiv.classList.remove('text-red-600', 'italic');
+             outputSection.classList.add('hidden');
+
+             const keys = {
+                 sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
+                 textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
+             };
+             const rawValues = {};
+             let allKeysFound = true;
+             let missingKeys = [];
+
+             for (const prop in keys) {
+                 rawValues[prop] = extractValue(inputText, keys[prop]);
+                 if (rawValues[prop] === null) {
+                     allKeysFound = false;
+                     missingKeys.push(keys[prop]);
+                 }
+             }
+
+             if (!allKeysFound) {
+                 const errorMsg = `Extracted text is incomplete or not in the expected format. Missing: ${missingKeys.join(', ')}`;
+                 showMessage(errorMsg, true, 5000);
+                 outputSection.classList.add('hidden');
+                 return;
+             }
+
+             const textColorParsed = parseColorValue(rawValues.textColorFull);
+             const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
+
+             const finalValues = {
+                 sku: rawValues.sku, fontStyle: rawValues.fontStyle, customText: rawValues.customText,
+                 textColorDescriptive: textColorParsed.descriptive, textColorHex: textColorParsed.hex,
+                 outlineColorDescriptive: outlineColorParsed.descriptive, outlineColorHex: outlineColorParsed.hex,
+                 size: rawValues.size
+             };
+
+             let hasOutput = false;
+             function addRow(label, value, copyValue = null) {
+                 const row = createOutputRow(label, value, copyValue);
+                 if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
+             }
+
+             addRow('SKU', finalValues.sku);
+             addRow('Font Style', finalValues.fontStyle);
+             addRow('Your custom text', finalValues.customText);
+             addRow('Text Color', finalValues.textColorDescriptive);
+             addRow('Text Hex Code', finalValues.textColorHex);
+             addRow('Text Outline Color', finalValues.outlineColorDescriptive);
+             addRow('Text Outline Hex Code', finalValues.outlineColorHex);
+             addRow('Size', finalValues.size);
+
+             if (!hasOutput) {
+                 const noDataMsg = document.createElement('p');
+                 noDataMsg.textContent = 'No relevant information found after processing.';
+                 noDataMsg.className = 'text-gray-500 italic p-2';
+                 extractedInfoDiv.appendChild(noDataMsg);
+             }
+
+             let generatedFilename = '';
+             generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(SKU-${finalValues.sku})`;
+             filenameOutputDiv.textContent = generatedFilename;
+
+             outputSection.classList.remove('hidden');
+             showMessage('Data processed successfully!');
+        }
+
+         // Function to handle file selection (used by both input and drop)
+        function handleFileSelect(file) {
+             if (file && file.type.startsWith('image/')) {
+                 selectedFile = file;
+                 fileNameSpan.textContent = file.name;
+                 dataInput.value = ''; // Clear text area
+                 imageInput.files = createFileList(file); // Update the file input's files programmatically
+             } else {
+                 showMessage('Please select or drop an image file.', true);
+                 // Optionally reset if invalid file dropped
+                 // selectedFile = null;
+                 // fileNameSpan.textContent = 'No file chosen';
+                 // imageInput.value = '';
+             }
+        }
+
+        // Helper to create a FileList object programmatically for the input
+        function createFileList(file) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            return dataTransfer.files;
+        }
+
+
+        // --- Event Listeners ---
+
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
                 try {
                     const text = await navigator.clipboard.readText();
                     dataInput.value = text;
+                    imageInput.value = '';
+                    selectedFile = null;
+                    fileNameSpan.textContent = 'No file chosen';
                     showMessage('Text pasted successfully!');
                 } catch (err) {
                     console.error('Clipboard read failed: ', err);
@@ -303,96 +502,92 @@
             }
         });
 
-        submitButton.addEventListener('click', () => {
-            const inputText = dataInput.value;
-            if (!inputText.trim()) {
-                showMessage('Input data cannot be empty.', true);
-                outputSection.classList.add('hidden');
-                return;
-            }
+        imageInput.addEventListener('change', (event) => {
+             handleFileSelect(event.target.files[0]);
+        });
 
-            // --- Start Strict Check ---
-            extractedInfoDiv.innerHTML = ''; // Clear previous results early
-            filenameOutputDiv.textContent = '';
-            filenameOutputDiv.classList.remove('text-red-600', 'italic');
-            outputSection.classList.add('hidden'); // Hide output initially
+        // --- Drag and Drop Event Listeners ---
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault(); // Prevent default behavior (opening file)
+            dropZone.classList.add('dragover');
+        });
 
-            const keys = {
-                sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
-                textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
-            };
-            const rawValues = {};
-            let allKeysFound = true; // Flag to track if all essential keys are found
-            let missingKeys = []; // Keep track of which keys are missing
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
 
-            for (const prop in keys) {
-                rawValues[prop] = extractValue(inputText, keys[prop]);
-                if (rawValues[prop] === null) {
-                    allKeysFound = false;
-                    missingKeys.push(keys[prop]); // Add the missing key label
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault(); // Prevent default behavior
+            dropZone.classList.remove('dragover');
+
+            if (event.dataTransfer.items) {
+                // Use DataTransferItemList interface to access the file(s)
+                if (event.dataTransfer.items.length === 1 && event.dataTransfer.items[0].kind === 'file') {
+                    const file = event.dataTransfer.items[0].getAsFile();
+                    handleFileSelect(file); // Use the common handler
+                } else if (event.dataTransfer.items.length > 1) {
+                     showMessage('Please drop only one image file.', true);
+                } else {
+                     showMessage('Please drop an image file.', true);
                 }
+            } else {
+                // Use DataTransfer interface to access the file(s) (fallback)
+                 if (event.dataTransfer.files.length === 1) {
+                     handleFileSelect(event.dataTransfer.files[0]); // Use the common handler
+                 } else if (event.dataTransfer.files.length > 1) {
+                     showMessage('Please drop only one image file.', true);
+                 } else {
+                      showMessage('Please drop an image file.', true);
+                 }
             }
+        });
 
-            // If any essential key is missing, show error and stop processing
-            if (!allKeysFound) {
-                const errorMsg = `Input data is incomplete or not in the expected format. Missing: ${missingKeys.join(', ')}`;
-                showMessage(errorMsg, true, 5000); // Show error for longer
-                outputSection.classList.add('hidden'); // Ensure output is hidden
-                return; // Stop further processing
+        // Prevent dropping files outside the drop zone (optional, good practice)
+        window.addEventListener('dragover', (event) => {
+            event.preventDefault();
+        }, false);
+        window.addEventListener('drop', (event) => {
+            event.preventDefault();
+        }, false);
+        // --- End Drag and Drop Listeners ---
+
+
+        submitButton.addEventListener('click', async () => {
+            const inputText = dataInput.value;
+            const imageFile = selectedFile;
+
+            if (inputText.trim()) {
+                processInputText(inputText);
+            } else if (imageFile) {
+                showMessage('Processing image... this may take a moment.', false, 10000);
+                showProcessingState(true);
+
+                try {
+                    const { data: { text } } = await Tesseract.recognize(
+                        imageFile,
+                        'eng',
+                        { logger: m => console.log(m) }
+                    );
+                     console.log("OCR Result:", text);
+                     processInputText(text);
+
+                } catch (error) {
+                     console.error("OCR Error:", error);
+                     showMessage(`Error during image processing: ${error.message || 'Unknown error'}`, true, 5000);
+                     outputSection.classList.add('hidden');
+                } finally {
+                     showProcessingState(false);
+                }
+
+            } else {
+                showMessage('Please paste text or upload an image first.', true);
+                outputSection.classList.add('hidden');
             }
-            // --- End Strict Check ---
-
-
-            // --- Proceed only if all keys were found ---
-            const textColorParsed = parseColorValue(rawValues.textColorFull);
-            const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
-
-            const finalValues = {
-                sku: rawValues.sku, fontStyle: rawValues.fontStyle, customText: rawValues.customText,
-                textColorDescriptive: textColorParsed.descriptive, textColorHex: textColorParsed.hex,
-                outlineColorDescriptive: outlineColorParsed.descriptive, outlineColorHex: outlineColorParsed.hex,
-                size: rawValues.size
-            };
-
-            let hasOutput = false;
-            function addRow(label, value, copyValue = null) {
-                const row = createOutputRow(label, value, copyValue);
-                if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
-            }
-
-            addRow('SKU', finalValues.sku);
-            addRow('Font Style', finalValues.fontStyle);
-            addRow('Your custom text', finalValues.customText);
-            addRow('Text Color', finalValues.textColorDescriptive);
-            addRow('Text Hex Code', finalValues.textColorHex);
-            addRow('Text Outline Color', finalValues.outlineColorDescriptive);
-            addRow('Text Outline Hex Code', finalValues.outlineColorHex);
-            addRow('Size', finalValues.size);
-
-             // This check might be redundant now due to the strict check above,
-             // but kept just in case filtering makes a value empty later.
-             if (!hasOutput) {
-                 const noDataMsg = document.createElement('p');
-                 noDataMsg.textContent = 'No relevant information found after processing.';
-                 noDataMsg.className = 'text-gray-500 italic p-2';
-                 extractedInfoDiv.appendChild(noDataMsg);
-             }
-
-            // Filename generation (already implicitly requires all fields due to strict check)
-            let generatedFilename = '';
-            // We know all required finalValues exist because of the strict check above
-            generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(SKU-${finalValues.sku})`;
-            filenameOutputDiv.textContent = generatedFilename;
-
-
-            // Show the output section ONLY if everything was successful
-            outputSection.classList.remove('hidden');
-            showMessage('Data processed successfully!');
         });
 
          copyFilenameButton.addEventListener('click', () => {
              const filenameToCopy = filenameOutputDiv.textContent;
-             if (!filenameOutputDiv.classList.contains('text-red-600') && filenameToCopy) { // Check it's not error and not empty
+             if (!filenameOutputDiv.classList.contains('text-red-600') && filenameToCopy) {
                  copyToClipboard(filenameToCopy, copyFilenameButton);
              } else {
                  showMessage('Cannot copy filename error message or empty filename.', true);
@@ -405,6 +600,9 @@
              extractedInfoDiv.innerHTML = '';
              filenameOutputDiv.textContent = '';
              filenameOutputDiv.classList.remove('text-red-600', 'italic');
+             imageInput.value = '';
+             selectedFile = null;
+             fileNameSpan.textContent = 'No file chosen';
              showMessage('Form reset.');
          });
 
