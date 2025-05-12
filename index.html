@@ -449,11 +449,9 @@
                  extractedInfoDiv.appendChild(noDataMsg);
              }
 
-             // --- Updated Filename Generation ---
              let generatedFilename = '';
              generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(Font Style-${finalValues.fontStyle})(SKU-${finalValues.sku})`;
              filenameOutputDiv.textContent = generatedFilename;
-             // --- End Updated Filename Generation ---
 
              outputSection.classList.remove('hidden');
              showMessage('Data processed successfully!');
@@ -475,6 +473,22 @@
             dataTransfer.items.add(file);
             return dataTransfer.files;
         }
+
+        // --- Reset Form Function ---
+        function resetForm() {
+             dataInput.value = '';
+             outputSection.classList.add('hidden');
+             extractedInfoDiv.innerHTML = '';
+             filenameOutputDiv.textContent = '';
+             filenameOutputDiv.classList.remove('text-red-600', 'italic');
+             imageInput.value = '';
+             selectedFile = null;
+             fileNameSpan.textContent = 'No file chosen';
+             showMessage('Form reset.');
+        }
+
+
+        // --- Event Listeners ---
 
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
@@ -540,6 +554,9 @@
 
 
         submitButton.addEventListener('click', async () => {
+            // Check if already processing to prevent multiple submits
+            if (submitButton.disabled) return;
+
             const inputText = dataInput.value;
             const imageFile = selectedFile;
 
@@ -581,16 +598,30 @@
              }
          });
 
-         pageTitle.addEventListener('click', () => {
-             dataInput.value = '';
-             outputSection.classList.add('hidden');
-             extractedInfoDiv.innerHTML = '';
-             filenameOutputDiv.textContent = '';
-             filenameOutputDiv.classList.remove('text-red-600', 'italic');
-             imageInput.value = '';
-             selectedFile = null;
-             fileNameSpan.textContent = 'No file chosen';
-             showMessage('Form reset.');
+         // Updated Title Click Listener
+         pageTitle.addEventListener('click', resetForm);
+
+         // --- Keyboard Shortcuts Listener ---
+         document.addEventListener('keydown', (event) => {
+             // Enter key for Submit
+             if (event.key === 'Enter') {
+                 // Prevent default Enter behavior if needed (e.g., newline in textarea)
+                 // event.preventDefault(); // Uncomment if you want to prevent default Enter actions globally
+
+                 // Trigger submit button click if it's not disabled
+                 if (!submitButton.disabled) {
+                     submitButton.click();
+                 }
+             }
+             // Backspace key for Reset (only if not focused on text input)
+             else if (event.key === 'Backspace') {
+                 // Check if the event target is the textarea or any other input/textarea element
+                 const targetTagName = event.target.tagName.toLowerCase();
+                 if (targetTagName !== 'textarea' && targetTagName !== 'input') {
+                     event.preventDefault(); // Prevent browser back navigation
+                     resetForm(); // Call the reset function
+                 }
+             }
          });
 
     </script>
