@@ -7,12 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
+        /* Existing Styles - START */
         .copy-btn.copied {
             background-color: #22c55e;
             color: white;
         }
         body {
             font-family: 'Inter', sans-serif;
+            position: relative; /* Needed for absolute positioning of sky elements */
+            overflow-x: hidden; /* Prevent horizontal scroll from animations */
         }
         .output-item {
             display: flex;
@@ -119,6 +122,70 @@
             color: #6b7280;
             margin-bottom: 0.75rem;
         }
+        /* Existing Styles - END */
+
+        /* Sky Features Styles - START */
+        #skyFeaturesContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through to content below */
+            z-index: -1; /* Place behind the main content, but body background will be night sky */
+            background: linear-gradient(to bottom, #000033, #1a1a55, #333377); /* Dark blue to purple gradient for night */
+            overflow: hidden; /* Hide elements that fly off-screen */
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white; /* Glowing effect */
+            animation: twinkle 2s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+
+        #moon {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-color: #f0f0e0; /* Pale yellow moon */
+            border-radius: 50%;
+            box-shadow: 0 0 20px #f0f0e0, 0 0 40px #f0f0e0, 0 0 60px #ffffff; /* Strong glow */
+            top: 10%;
+            right: 15%;
+        }
+
+        .aircraft {
+            position: absolute;
+            font-size: 24px; /* Using emoji for aircraft */
+            transform: rotate(0deg); /* Initial rotation, will be updated by JS */
+            transition: transform 0.5s linear; /* Smooth rotation */
+            z-index: 10; /* Aircraft above stars/moon */
+        }
+
+        .smoke-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: fadeOutSmoke 1.5s forwards;
+            z-index: 5; /* Smoke behind aircraft but above background */
+        }
+
+        @keyframes fadeOutSmoke {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(0.2); opacity: 0; }
+        }
+        /* Sky Features Styles - END */
 
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -126,7 +193,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
-    <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl">
+    <div id="skyFeaturesContainer">
+        <div id="moon"></div>
+        </div>
+
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl relative z-10">
         <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-700" title="Click to reset form">Data Extractor & Formatter</h1>
 
         <div class="mb-4 border-b border-gray-200">
@@ -186,6 +257,7 @@
     </div>
 
     <script>
+        // Existing JavaScript - START
         const dataInput = document.getElementById('dataInput');
         const pasteButton = document.getElementById('pasteButton');
         const submitButton = document.getElementById('submitButton');
@@ -392,31 +464,21 @@
             extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
             filenameOutputDiv.classList.remove('text-red-600', 'italic');
-            outputSection.classList.add('hidden'); // Hide initially, show at the end if there's content
+            outputSection.classList.add('hidden'); 
 
             const keys = {
                 sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
                 textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
             };
             const rawValues = {};
-            // let allKeysFound = true; // No longer strictly enforcing this for error message
-            let missingKeys = []; // Still useful for internal tracking or future debugging
+            let missingKeys = []; 
 
             for (const prop in keys) {
                 rawValues[prop] = extractValue(inputText, keys[prop]);
                 if (rawValues[prop] === null) {
-                    // allKeysFound = false; // Not blocking anymore
                     missingKeys.push(keys[prop]);
                 }
             }
-
-            // REMOVED: The block that showed error if not allKeysFound
-            // if (!allKeysFound) {
-            //     const errorMsg = `Extracted text is incomplete or not in the expected format. Missing: ${missingKeys.join(', ')}`;
-            //     showMessage(errorMsg, true, 5000);
-            //     outputSection.classList.add('hidden');
-            //     return;
-            // }
 
             const textColorParsed = parseColorValue(rawValues.textColorFull);
             const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
@@ -443,45 +505,40 @@
             addRow('Text Outline Hex Code', finalValues.outlineColorHex);
             addRow('Size', finalValues.size);
 
-            if (!hasOutput && missingKeys.length === Object.keys(keys).length) { // If no rows were added and all keys were missing
+            if (!hasOutput && missingKeys.length === Object.keys(keys).length) { 
                 const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No relevant information could be extracted from the input.';
                 noDataMsg.className = 'text-gray-500 italic p-2';
                 extractedInfoDiv.appendChild(noDataMsg);
-            } else if (!hasOutput) { // Some keys might have been found but resulted in no displayable output
+            } else if (!hasOutput) { 
                  const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No displayable information found after processing.';
                 noDataMsg.className = 'text-gray-500 italic p-2';
                 extractedInfoDiv.appendChild(noDataMsg);
             }
 
-
-            // --- Updated Filename Generation (Size & SKU Abbreviations) ---
             let generatedFilename = '';
             let sizeAbbreviated = finalValues.size || '';
             sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L');
             sizeAbbreviated = sizeAbbreviated.replace(/\bHEIGHT\b/gi, 'H');
 
-            // Build filename string ensuring missing parts don't break it badly
             const customTextPart = finalValues.customText || "NoText";
             const tcPart = finalValues.textColorDescriptive ? `(TC-${finalValues.textColorDescriptive})` : "";
             const tocPart = finalValues.outlineColorDescriptive ? `(TOC-${finalValues.outlineColorDescriptive})` : "";
             const sizePart = sizeAbbreviated ? `(S-${sizeAbbreviated})` : "";
             const skuPart = finalValues.sku ? `(${finalValues.sku})` : "(NoSKU)";
 
-
             generatedFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
             filenameOutputDiv.textContent = generatedFilename;
-            // --- End Updated Filename Generation ---
 
-            if (hasOutput || filenameOutputDiv.textContent.trim() !== "") { // Show section if there's extracted info or a filename
+            if (hasOutput || filenameOutputDiv.textContent.trim() !== "") { 
                 outputSection.classList.remove('hidden');
                 if (missingKeys.length > 0) {
                      showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
                 } else {
                     showMessage('Data processed successfully!');
                 }
-            } else { // If truly nothing to show
+            } else { 
                  showMessage('No data to display after processing.', true);
             }
         }
@@ -490,8 +547,8 @@
             if (file && file.type.startsWith('image/')) {
                 selectedFile = file;
                 fileNameSpan.textContent = file.name;
-                dataInput.value = ''; // Clear text input if image is selected
-                imageInput.files = createFileList(file); // Ensure the input element reflects the dropped file
+                dataInput.value = ''; 
+                imageInput.files = createFileList(file); 
             } else {
                 showMessage('Please select or drop an image file.', true);
             }
@@ -509,7 +566,7 @@
             extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
             filenameOutputDiv.classList.remove('text-red-600', 'italic');
-            imageInput.value = ''; // Reset file input
+            imageInput.value = ''; 
             selectedFile = null;
             fileNameSpan.textContent = 'No file chosen';
             showMessage('Form reset.');
@@ -521,7 +578,7 @@
                 try {
                     const text = await navigator.clipboard.readText();
                     dataInput.value = text;
-                    imageInput.value = ''; // Clear file input if text is pasted
+                    imageInput.value = ''; 
                     selectedFile = null;
                     fileNameSpan.textContent = 'No file chosen';
                     showMessage('Text pasted successfully!');
@@ -561,7 +618,6 @@
                     showMessage('Please drop an image file.', true);
                 }
             } else {
-                // Fallback for older browsers
                 if (event.dataTransfer.files.length === 1) {
                     handleFileSelect(event.dataTransfer.files[0]);
                 } else if (event.dataTransfer.files.length > 1) {
@@ -572,7 +628,6 @@
             }
         });
 
-        // Prevent browser from opening dropped files globally
         window.addEventListener('dragover', (event) => {
             event.preventDefault();
         }, false);
@@ -590,17 +645,17 @@
             if (inputText.trim()) {
                 processInputText(inputText);
             } else if (imageFile) {
-                showMessage('Processing image... this may take a moment.', false, 10000); // Longer initial message
+                showMessage('Processing image... this may take a moment.', false, 10000); 
                 showProcessingState(true);
 
                 try {
                     const { data: { text } } = await Tesseract.recognize(
                         imageFile,
                         'eng',
-                        { logger: m => console.log(m) } // Optional: for debugging OCR progress
+                        { logger: m => console.log(m) } 
                     );
-                    console.log("OCR Result:", text); // Log the raw OCR output
-                    processInputText(text); // Process the extracted text
+                    console.log("OCR Result:", text); 
+                    processInputText(text); 
 
                 } catch (error) {
                     console.error("OCR Error:", error);
@@ -629,22 +684,164 @@
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                // Avoid triggering submit if a button is focused or inside textarea
                 const targetTagName = event.target.tagName.toLowerCase();
                 if (targetTagName !== 'button' && !submitButton.disabled) {
                     submitButton.click();
                 }
             }
-            // Allow Backspace in textareas and inputs
             else if (event.key === 'Backspace') {
                 const targetTagName = event.target.tagName.toLowerCase();
                 if (targetTagName !== 'textarea' && targetTagName !== 'input') {
-                    event.preventDefault(); // Prevent navigating back
+                    event.preventDefault(); 
                     resetForm();
                 }
             }
         });
+        // Existing JavaScript - END
 
+
+        // Sky Features JavaScript - START
+        const skyContainer = document.getElementById('skyFeaturesContainer');
+        const numStars = 200; // More stars for a desert sky feel
+        const numAircraft = 5;
+        const aircrafts = [];
+
+        // Create Stars
+        for (let i = 0; i < numStars; i++) {
+            const star = document.createElement('div');
+            star.classList.add('star');
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.left = `${Math.random() * 100}%`;
+            // Vary size and animation delay for a more natural look
+            const size = Math.random() * 2 + 1; // Star size between 1px and 3px
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.animationDelay = `${Math.random() * 2}s`;
+            star.style.animationDuration = `${Math.random() * 2 + 1.5}s`; // Twinkle speed
+            skyContainer.appendChild(star);
+        }
+
+        // Aircraft Class/Object
+        function createAircraft(index) {
+            const aircraftEl = document.createElement('div');
+            aircraftEl.classList.add('aircraft');
+            aircraftEl.innerHTML = '✈️'; // Using an emoji for the aircraft
+            skyContainer.appendChild(aircraftEl);
+
+            let x, y, angle, speed, targetX, targetY;
+
+            function resetAircraft() {
+                // Start from either left or right edge, at a random height
+                const startEdge = Math.random() < 0.5 ? 'left' : 'right';
+                y = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1; // Fly in the upper 60% of screen
+
+                if (startEdge === 'left') {
+                    x = -50; // Start off-screen left
+                    targetX = window.innerWidth + 50; // Target off-screen right
+                } else {
+                    x = window.innerWidth + 50; // Start off-screen right
+                    targetX = -50; // Target off-screen left
+                }
+                // Target a y position slightly different from start y for varied paths
+                targetY = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1;
+                speed = Math.random() * 2 + 1.5; // Random speed (pixels per frame)
+                
+                // Calculate initial angle
+                const dx = targetX - x;
+                const dy = targetY - y;
+                angle = Math.atan2(dy, dx);
+                aircraftEl.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad)`;
+            }
+            
+            resetAircraft(); // Initialize position and speed
+
+            return {
+                el: aircraftEl,
+                x, y, angle, speed, targetX, targetY,
+                update: function() {
+                    // Move aircraft
+                    this.x += Math.cos(this.angle) * this.speed;
+                    this.y += Math.sin(this.angle) * this.speed;
+
+                    this.el.style.transform = `translate(${this.x}px, ${this.y}px) rotate(${this.angle}rad)`;
+
+                    // Create smoke trail
+                    if (Math.random() < 0.6) { // Create smoke puff frequently
+                        createSmoke(this.x + 10, this.y + 10, this.angle); // Offset smoke slightly from aircraft center
+                    }
+
+                    // Reset if off-screen
+                    if ( (this.speed > 0 && this.x > window.innerWidth + 60) || (this.speed < 0 && this.x < -60) ||
+                         (this.x < -60 && this.targetX < 0) || (this.x > window.innerWidth + 60 && this.targetX > 0) ) {
+                        resetAircraft(); // Re-initialize aircraft when it goes off screen
+                        this.x = x; // update object properties with new reset values
+                        this.y = y;
+                        this.angle = angle;
+                        this.speed = speed;
+                        this.targetX = targetX;
+                        this.targetY = targetY;
+                    }
+                }
+            };
+        }
+
+        // Create Smoke Puffs
+        const smokeColors = ['#FF5733', '#FFC300', '#DAF7A6', '#33FFBD', '#337BFF', '#C70039'];
+        function createSmoke(x, y, aircraftAngle) {
+            const smoke = document.createElement('div');
+            smoke.classList.add('smoke-trail');
+            
+            // Position smoke behind the aircraft based on its angle
+            // The exact offset might need tweaking depending on the aircraft emoji/SVG size
+            const offsetX = Math.cos(aircraftAngle + Math.PI) * 15; // Opposite direction of flight
+            const offsetY = Math.sin(aircraftAngle + Math.PI) * 15;
+
+            smoke.style.left = `${x + offsetX}px`;
+            smoke.style.top = `${y + offsetY}px`;
+            smoke.style.backgroundColor = smokeColors[Math.floor(Math.random() * smokeColors.length)];
+            skyContainer.appendChild(smoke);
+
+            // Remove smoke after animation
+            setTimeout(() => {
+                if (smoke.parentNode === skyContainer) { // Check if still child before removing
+                   skyContainer.removeChild(smoke);
+                }
+            }, 1500); // Matches smoke animation duration
+        }
+
+        // Initialize Aircraft
+        for (let i = 0; i < numAircraft; i++) {
+            aircrafts.push(createAircraft(i));
+        }
+
+        // Animation Loop
+        function animateSky() {
+            aircrafts.forEach(craft => craft.update());
+            requestAnimationFrame(animateSky);
+        }
+
+        // Start animations
+        animateSky();
+
+        // Adjust moon and star positions on resize (simple example)
+        window.addEventListener('resize', () => {
+            // Moon position could be recalculated if it's percentage based
+            // For aircraft, their targetX/Y might need update if paths are strictly within bounds
+            // For this example, aircraft will continue their path and reset when off-screen.
+            // Stars are randomly placed, so they generally look okay on resize.
+        });
+
+        // Ensure the main content is visible above the sky
+        // This is a fallback if z-index on body/skyFeaturesContainer isn't enough
+        // or if the main content container doesn't have its own z-index.
+        const mainContentContainer = document.querySelector('.bg-white.max-w-2xl');
+        if (mainContentContainer) {
+            mainContentContainer.style.position = 'relative';
+            mainContentContainer.style.zIndex = '10'; // Ensure it's above the sky
+        }
+         // Change body background to be part of the night sky
+        document.body.style.background = 'linear-gradient(to bottom, #000022, #0a0a35, #1a1a55)';
+        // SkyFeaturesJavaScript - END
     </script>
 </body>
 </html>
