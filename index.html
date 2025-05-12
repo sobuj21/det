@@ -103,22 +103,21 @@
              opacity: 0.7;
              cursor: not-allowed;
         }
-        /* Drag and Drop Styles */
         #dropZone {
-            border: 2px dashed #cbd5e1; /* gray-300 */
-            border-radius: 0.5rem; /* rounded-lg */
-            padding: 1.5rem; /* p-6 */
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
             text-align: center;
-            background-color: #f9fafb; /* gray-50 */
+            background-color: #f9fafb;
             transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         #dropZone.dragover {
-            background-color: #dbeafe; /* blue-100 */
-            border-color: #60a5fa; /* blue-400 */
+            background-color: #dbeafe;
+            border-color: #60a5fa;
         }
         #dropZone p {
-             color: #6b7280; /* gray-500 */
-             margin-bottom: 0.75rem; /* mb-3 */
+             color: #6b7280;
+             margin-bottom: 0.75rem;
         }
 
     </style>
@@ -199,7 +198,7 @@
         const imageInput = document.getElementById('imageInput');
         const fileNameSpan = document.getElementById('fileName');
         const submitSpinner = document.getElementById('submitSpinner');
-        const dropZone = document.getElementById('dropZone'); // Get the drop zone element
+        const dropZone = document.getElementById('dropZone');
 
         let selectedFile = null;
 
@@ -450,39 +449,32 @@
                  extractedInfoDiv.appendChild(noDataMsg);
              }
 
+             // --- Updated Filename Generation ---
              let generatedFilename = '';
-             generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(SKU-${finalValues.sku})`;
+             generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(Font Style-${finalValues.fontStyle})(SKU-${finalValues.sku})`;
              filenameOutputDiv.textContent = generatedFilename;
+             // --- End Updated Filename Generation ---
 
              outputSection.classList.remove('hidden');
              showMessage('Data processed successfully!');
         }
 
-         // Function to handle file selection (used by both input and drop)
         function handleFileSelect(file) {
              if (file && file.type.startsWith('image/')) {
                  selectedFile = file;
                  fileNameSpan.textContent = file.name;
-                 dataInput.value = ''; // Clear text area
-                 imageInput.files = createFileList(file); // Update the file input's files programmatically
+                 dataInput.value = '';
+                 imageInput.files = createFileList(file);
              } else {
                  showMessage('Please select or drop an image file.', true);
-                 // Optionally reset if invalid file dropped
-                 // selectedFile = null;
-                 // fileNameSpan.textContent = 'No file chosen';
-                 // imageInput.value = '';
              }
         }
 
-        // Helper to create a FileList object programmatically for the input
         function createFileList(file) {
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
             return dataTransfer.files;
         }
-
-
-        // --- Event Listeners ---
 
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
@@ -506,9 +498,8 @@
              handleFileSelect(event.target.files[0]);
         });
 
-        // --- Drag and Drop Event Listeners ---
         dropZone.addEventListener('dragover', (event) => {
-            event.preventDefault(); // Prevent default behavior (opening file)
+            event.preventDefault();
             dropZone.classList.add('dragover');
         });
 
@@ -517,23 +508,21 @@
         });
 
         dropZone.addEventListener('drop', (event) => {
-            event.preventDefault(); // Prevent default behavior
+            event.preventDefault();
             dropZone.classList.remove('dragover');
 
             if (event.dataTransfer.items) {
-                // Use DataTransferItemList interface to access the file(s)
                 if (event.dataTransfer.items.length === 1 && event.dataTransfer.items[0].kind === 'file') {
                     const file = event.dataTransfer.items[0].getAsFile();
-                    handleFileSelect(file); // Use the common handler
+                    handleFileSelect(file);
                 } else if (event.dataTransfer.items.length > 1) {
                      showMessage('Please drop only one image file.', true);
                 } else {
                      showMessage('Please drop an image file.', true);
                 }
             } else {
-                // Use DataTransfer interface to access the file(s) (fallback)
                  if (event.dataTransfer.files.length === 1) {
-                     handleFileSelect(event.dataTransfer.files[0]); // Use the common handler
+                     handleFileSelect(event.dataTransfer.files[0]);
                  } else if (event.dataTransfer.files.length > 1) {
                      showMessage('Please drop only one image file.', true);
                  } else {
@@ -542,14 +531,12 @@
             }
         });
 
-        // Prevent dropping files outside the drop zone (optional, good practice)
         window.addEventListener('dragover', (event) => {
             event.preventDefault();
         }, false);
         window.addEventListener('drop', (event) => {
             event.preventDefault();
         }, false);
-        // --- End Drag and Drop Listeners ---
 
 
         submitButton.addEventListener('click', async () => {
