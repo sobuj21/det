@@ -449,9 +449,15 @@
                  extractedInfoDiv.appendChild(noDataMsg);
              }
 
+             // --- Updated Filename Generation (Size & SKU Abbreviations) ---
              let generatedFilename = '';
-             generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(Font Style-${finalValues.fontStyle})(SKU-${finalValues.sku})`;
+             let sizeAbbreviated = finalValues.size || '';
+             sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L');
+             sizeAbbreviated = sizeAbbreviated.replace(/\bHEIGHT\b/gi, 'H');
+
+             generatedFilename = `${finalValues.customText}(TC-${finalValues.textColorDescriptive})(TOC-${finalValues.outlineColorDescriptive})(S-${sizeAbbreviated})(${finalValues.sku})`; // Changed Size- to S- and removed SKU- prefix
              filenameOutputDiv.textContent = generatedFilename;
+             // --- End Updated Filename Generation ---
 
              outputSection.classList.remove('hidden');
              showMessage('Data processed successfully!');
@@ -474,7 +480,6 @@
             return dataTransfer.files;
         }
 
-        // --- Reset Form Function ---
         function resetForm() {
              dataInput.value = '';
              outputSection.classList.add('hidden');
@@ -487,8 +492,6 @@
              showMessage('Form reset.');
         }
 
-
-        // --- Event Listeners ---
 
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
@@ -554,7 +557,6 @@
 
 
         submitButton.addEventListener('click', async () => {
-            // Check if already processing to prevent multiple submits
             if (submitButton.disabled) return;
 
             const inputText = dataInput.value;
@@ -598,28 +600,20 @@
              }
          });
 
-         // Updated Title Click Listener
          pageTitle.addEventListener('click', resetForm);
 
-         // --- Keyboard Shortcuts Listener ---
          document.addEventListener('keydown', (event) => {
-             // Enter key for Submit
              if (event.key === 'Enter') {
-                 // Prevent default Enter behavior if needed (e.g., newline in textarea)
-                 // event.preventDefault(); // Uncomment if you want to prevent default Enter actions globally
-
-                 // Trigger submit button click if it's not disabled
-                 if (!submitButton.disabled) {
+                 const targetTagName = event.target.tagName.toLowerCase();
+                 if (targetTagName !== 'button' && !submitButton.disabled) {
                      submitButton.click();
                  }
              }
-             // Backspace key for Reset (only if not focused on text input)
              else if (event.key === 'Backspace') {
-                 // Check if the event target is the textarea or any other input/textarea element
                  const targetTagName = event.target.tagName.toLowerCase();
                  if (targetTagName !== 'textarea' && targetTagName !== 'input') {
-                     event.preventDefault(); // Prevent browser back navigation
-                     resetForm(); // Call the reset function
+                     event.preventDefault();
+                     resetForm();
                  }
              }
          });
