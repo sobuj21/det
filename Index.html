@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Extractor & Formatter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .copy-btn.copied {
+            background-color: #22c55e;
+            color: white;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .output-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+         .output-item:last-child {
+            border-bottom: none;
+        }
+        .output-label {
+            font-weight: 600;
+            margin-right: 0.5rem;
+            color: #4b5563;
+            white-space: nowrap;
+        }
+        .output-value {
+            flex-grow: 1;
+            text-align: left;
+            word-break: break-word;
+             color: #1f2937;
+             margin-right: 0.5rem;
+        }
+        .copy-btn {
+            margin-left: 1rem;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            transition: background-color 0.2s ease;
+            flex-shrink: 0;
+            background-color: #e5e7eb;
+            color: #374151;
+            border-radius: 0.375rem;
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+             background-color: #d1d5db;
+        }
+        .filename-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+             background-color: #f9fafb;
+             padding: 1rem;
+             border-radius: 0.375rem;
+             box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+        #filenameOutput {
+             flex-grow: 1;
+             margin-right: 1rem;
+        }
+        #pageTitle {
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl">
+        <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-700" title="Click to reset form">Data Extractor & Formatter</h1>
+
+        <div class="mb-4">
+            <label for="dataInput" class="block text-sm font-medium text-gray-700 mb-1">Paste your data here:</label>
+            <div class="flex items-center space-x-2">
+                <textarea id="dataInput" rows="8" class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-y" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;Your custom text: WAY TO GO ROMEO&#10;Text Color: MATTE BLACK (#28282B)&#10;Text Outline Color: MATTE RED (#B33F40)&#10;Size: 20 INCHES LONG 3 INCH HEIGHT"></textarea>
+                <button id="pasteButton" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out text-sm">Paste</button>
+            </div>
+        </div>
+
+        <div class="flex justify-end mb-6">
+             <button id="submitButton" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out font-medium">Submit</button>
+        </div>
+
+        <div id="outputSection" class="space-y-4 hidden">
+            <div>
+                <h2 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">Extracted Information</h2>
+                <div id="extractedInfo" class="space-y-1 bg-gray-50 p-4 rounded-md shadow-inner">
+                </div>
+            </div>
+
+             <div>
+                <h2 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">Generated Filename</h2>
+                <div class="filename-section">
+                    <div id="filenameOutput" class="text-sm text-gray-800 break-words">
+                    </div>
+                    <button id="copyFilenameButton" class="copy-btn">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="messageBox" class="mt-4 text-center text-sm font-medium hidden"></div>
+
+    </div>
+
+    <script>
+        const dataInput = document.getElementById('dataInput');
+        const pasteButton = document.getElementById('pasteButton');
+        const submitButton = document.getElementById('submitButton');
+        const outputSection = document.getElementById('outputSection');
+        const extractedInfoDiv = document.getElementById('extractedInfo');
+        const filenameOutputDiv = document.getElementById('filenameOutput');
+        const copyFilenameButton = document.getElementById('copyFilenameButton');
+        const messageBox = document.getElementById('messageBox');
+        const pageTitle = document.getElementById('pageTitle');
+
+        function showMessage(text, isError = false, duration = 2000) {
+            messageBox.textContent = text;
+            messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-600' : 'text-green-600'}`;
+            messageBox.classList.remove('hidden');
+            if (messageBox.timeoutId) {
+                clearTimeout(messageBox.timeoutId);
+            }
+            messageBox.timeoutId = setTimeout(() => {
+                messageBox.classList.add('hidden');
+                messageBox.timeoutId = null;
+            }, duration);
+        }
+
+        async function copyToClipboard(textToCopy, buttonElement) {
+            const text = String(textToCopy || '');
+            if (!text) {
+                 showMessage('Nothing to copy.', true);
+                 return;
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const originalText = buttonElement.textContent;
+                    buttonElement.textContent = 'Copied!';
+                    buttonElement.classList.add('copied');
+                    if (buttonElement.timeoutId) clearTimeout(buttonElement.timeoutId);
+                    buttonElement.timeoutId = setTimeout(() => {
+                        buttonElement.textContent = originalText;
+                        buttonElement.classList.remove('copied');
+                        buttonElement.timeoutId = null;
+                    }, 1500);
+                    return;
+                } catch (err) {
+                    console.error('Clipboard API failed: ', err);
+                    showMessage('Could not copy using Clipboard API. Trying fallback.', true, 3000);
+                }
+            }
+
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (successful) {
+                    const originalText = buttonElement.textContent;
+                    buttonElement.textContent = 'Copied!';
+                    buttonElement.classList.add('copied');
+                    if (buttonElement.timeoutId) clearTimeout(buttonElement.timeoutId);
+                    buttonElement.timeoutId = setTimeout(() => {
+                        buttonElement.textContent = originalText;
+                        buttonElement.classList.remove('copied');
+                        buttonElement.timeoutId = null;
+                    }, 1500);
+                     showMessage('Text copied (using fallback).');
+                } else {
+                    throw new Error('Fallback copy command failed.');
+                }
+            } catch (err) {
+                console.error('Fallback copy failed: ', err);
+                showMessage('Failed to copy text. Clipboard access might be blocked by your browser (e.g., not HTTPS).', true, 4000);
+            }
+        }
+
+        function extractValue(text, key) {
+            const keyIndex = text.indexOf(key);
+            if (keyIndex === -1) return null;
+
+            let valueStartIndex = keyIndex + key.length;
+            const potentialNextKeys = ["SKU:", "Font Style:", "Your custom text:", "Text Color:", "Text Outline Color:", "Size:"];
+            const linesToIgnorePatterns = [
+                /^Customizations:/i,
+                /^Surface 1:/i,
+                /^(Please\s+)?ing?nore\s+this\s+color/i
+            ];
+
+            let earliestNextKeyIndex = text.length;
+            for (const nextKey of potentialNextKeys) {
+                const currentNextKeyIndex = text.indexOf(nextKey, valueStartIndex);
+                if (currentNextKeyIndex !== -1) {
+                    const lineStartIndex = text.lastIndexOf('\n', currentNextKeyIndex) + 1;
+                    if (text.substring(lineStartIndex, currentNextKeyIndex).trim() === '') {
+                        earliestNextKeyIndex = Math.min(earliestNextKeyIndex, lineStartIndex);
+                    }
+                }
+            }
+
+            let rawValueBlock = text.substring(valueStartIndex, earliestNextKeyIndex);
+            const valueLines = rawValueBlock.split('\n');
+            const filteredLines = valueLines.filter(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine === '') return false;
+                for (const pattern of linesToIgnorePatterns) {
+                    if (pattern.test(trimmedLine)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            let finalValue = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
+            return finalValue || null;
+        }
+
+        function extractHexCode(text) {
+            if (!text) return null;
+            const hexRegex = /#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/;
+            const match = text.match(hexRegex);
+            return match ? match[0] : null;
+        }
+
+        function parseColorValue(colorValue) {
+            if (!colorValue) return { descriptive: null, hex: null };
+
+             const ignorePattern = /^(Please\s+)?ing?nore\s+this\s+color.*?:?\s*/i;
+             let cleanedValue = colorValue.replace(ignorePattern, '');
+
+            const hex = extractHexCode(cleanedValue);
+            let descriptive = cleanedValue;
+
+            if (hex) {
+                const hexIndex = descriptive.indexOf(hex);
+                if (hexIndex !== -1) {
+                     let startIndex = hexIndex;
+                     while(startIndex > 0 && /[\s(]/.test(descriptive[startIndex-1])) startIndex--;
+                     let endIndex = hexIndex + hex.length;
+                     while(endIndex < descriptive.length && /[\s)]/.test(descriptive[endIndex])) endIndex++;
+                     descriptive = descriptive.substring(0, startIndex) + descriptive.substring(endIndex);
+                }
+            }
+            descriptive = descriptive.replace(/\s+/g, ' ').trim();
+            return { descriptive: descriptive || null, hex: hex };
+        }
+
+        function createOutputRow(label, value, copyValue = null) {
+            if (value === null || value === undefined || String(value).trim() === '') return null;
+
+            const finalCopyValue = (copyValue !== null && copyValue !== undefined) ? String(copyValue) : String(value);
+            const displayValue = String(value);
+
+            const div = document.createElement('div');
+            div.className = 'output-item';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'output-label';
+            labelSpan.textContent = label + ':';
+            div.appendChild(labelSpan);
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'output-value';
+            valueSpan.textContent = displayValue;
+            div.appendChild(valueSpan);
+
+            const copyButton = document.createElement('button');
+            copyButton.textContent = 'Copy';
+            copyButton.className = 'copy-btn';
+            copyButton.onclick = () => copyToClipboard(finalCopyValue, copyButton);
+            div.appendChild(copyButton);
+
+            return div;
+        }
+
+        pasteButton.addEventListener('click', async () => {
+            if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    dataInput.value = text;
+                    showMessage('Text pasted successfully!');
+                } catch (err) {
+                    console.error('Clipboard read failed: ', err);
+                    showMessage('Failed to paste. Check browser permissions or ensure page is HTTPS.', true, 4000);
+                }
+            } else {
+                 showMessage('Clipboard paste not available/supported in this browser or context (requires HTTPS).', true, 4000);
+            }
+        });
+
+        submitButton.addEventListener('click', () => {
+            const inputText = dataInput.value;
+            if (!inputText.trim()) {
+                showMessage('Input data cannot be empty.', true);
+                outputSection.classList.add('hidden');
+                return;
+            }
+
+            // --- Start Strict Check ---
+            extractedInfoDiv.innerHTML = ''; // Clear previous results early
+            filenameOutputDiv.textContent = '';
+            filenameOutputDiv.classList.remove('text-red-600', 'italic');
+            outputSection.classList.add('hidden'); // Hide output initially
+
+            const keys = {
+                sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
+                textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
+            };
+            const rawValues = {};
+            let allKeysFound = true; // Flag to track if all essential keys are found
+            let missingKeys = []; // Keep track of which keys are missing
+
+            for (const prop in keys) {
+                rawValues[prop] = extractValue(inputText, keys[prop]);
+                if (rawValues[prop] === null) {
+                    allKeysFound = false;
+                    missingKeys.push(keys[prop]); // Add the missing key label
+                }
+            }
+
+            // If any essential key is missing, show error and stop processing
+            if (!allKeysFound) {
+                const errorMsg = `Input data is incomplete or not in the expected format. Missing: ${missingKeys.join(', ')}`;
+                showMessage(errorMsg, true, 5000); // Show error for longer
+                outputSection.classList.add('hidden'); // Ensure output is hidden
+                return; // Stop further processing
+            }
+            // --- End Strict Check ---
+
+
+            // --- Proceed only if all keys were found ---
+            const textColorParsed = parseColorValue(rawValues.textColorFull);
+            const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
+
+            const finalValues = {
+                sku: rawValues.sku, fontStyle: rawValues.fontStyle, customText: rawValues.customText,
+                textColorDescriptive: textColorParsed.descriptive, textColorHex: textColorParsed.hex,
+                outlineColorDescriptive: outlineColorParsed.descriptive, outlineColorHex: outlineColorParsed.hex,
+                size: rawValues.size
+            };
+
+            let hasOutput = false;
+            function addRow(label, value, copyValue = null) {
+                const row = createOutputRow(label, value, copyValue);
+                if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
+            }
+
+            addRow('SKU', finalValues.sku);
+            addRow('Font Style', finalValues.fontStyle);
+            addRow('Your custom text', finalValues.customText);
+            addRow('Text Color', finalValues.textColorDescriptive);
+            addRow('Text Hex Code', finalValues.textColorHex);
+            addRow('Text Outline Color', finalValues.outlineColorDescriptive);
+            addRow('Text Outline Hex Code', finalValues.outlineColorHex);
+            addRow('Size', finalValues.size);
+
+             // This check might be redundant now due to the strict check above,
+             // but kept just in case filtering makes a value empty later.
+             if (!hasOutput) {
+                 const noDataMsg = document.createElement('p');
+                 noDataMsg.textContent = 'No relevant information found after processing.';
+                 noDataMsg.className = 'text-gray-500 italic p-2';
+                 extractedInfoDiv.appendChild(noDataMsg);
+             }
+
+            // Filename generation (already implicitly requires all fields due to strict check)
+            let generatedFilename = '';
+            // We know all required finalValues exist because of the strict check above
+            generatedFilename = `${finalValues.customText}(Text Color-${finalValues.textColorDescriptive})(Text Outline Color-${finalValues.outlineColorDescriptive})(Size-${finalValues.size})(SKU-${finalValues.sku})`;
+            filenameOutputDiv.textContent = generatedFilename;
+
+
+            // Show the output section ONLY if everything was successful
+            outputSection.classList.remove('hidden');
+            showMessage('Data processed successfully!');
+        });
+
+         copyFilenameButton.addEventListener('click', () => {
+             const filenameToCopy = filenameOutputDiv.textContent;
+             if (!filenameOutputDiv.classList.contains('text-red-600') && filenameToCopy) { // Check it's not error and not empty
+                 copyToClipboard(filenameToCopy, copyFilenameButton);
+             } else {
+                 showMessage('Cannot copy filename error message or empty filename.', true);
+             }
+         });
+
+         pageTitle.addEventListener('click', () => {
+             dataInput.value = '';
+             outputSection.classList.add('hidden');
+             extractedInfoDiv.innerHTML = '';
+             filenameOutputDiv.textContent = '';
+             filenameOutputDiv.classList.remove('text-red-600', 'italic');
+             showMessage('Form reset.');
+         });
+
+    </script>
+</body>
+</html>
