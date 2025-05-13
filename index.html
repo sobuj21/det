@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" class="dark"> <head>
+<html lang="en" class="dark">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Extractor & Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
-        /* Custom styles for the application */
         .copy-btn.copied {
-            background-color: #22c55e; /* Green for 'Copied!' feedback */
+            background-color: #22c55e;
             color: white;
         }
         body {
@@ -19,7 +19,6 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.5rem 0;
-            /* border-bottom is applied via Tailwind in createOutputRow */
         }
          .output-item:last-child {
             border-bottom: none;
@@ -39,9 +38,9 @@
             margin-left: 1rem;
             padding: 0.3rem 0.6rem;
             font-size: 0.8rem;
-            transition: background-color 0.2s ease, color 0.2s ease; /* Added color transition */
+            transition: background-color 0.2s ease, color 0.2s ease;
             flex-shrink: 0;
-            border-radius: 0.375rem; /* rounded-md */
+            border-radius: 0.375rem;
             cursor: pointer;
         }
         .filename-section {
@@ -49,7 +48,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 1rem;
-            border-radius: 0.375rem; /* rounded-md */
+            border-radius: 0.375rem;
         }
         #filenameOutput {
             flex-grow: 1;
@@ -62,7 +61,7 @@
         #imageUploadLabel {
             cursor: pointer;
             padding: 0.5rem 1rem;
-            border-radius: 0.375rem; /* rounded-md */
+            border-radius: 0.375rem;
             transition: background-color 0.2s ease;
             display: inline-block;
             text-align: center;
@@ -71,9 +70,8 @@
             display: none;
         }
         .loader {
-            border: 4px solid #f3f3f3; /* Light loader ring */
-            /* Dark mode adjustment for loader ring if needed: dark:border-slate-700 */
-            border-top: 4px solid #3498db; /* Blue part of loader */
+            border: 4px solid #4A5568;
+            border-top: 4px solid #3498db;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -91,65 +89,54 @@
             cursor: not-allowed;
         }
         #dropZone {
-            border-radius: 0.5rem; /* rounded-lg */
+            border-radius: 0.5rem;
             padding: 1.5rem;
             text-align: center;
             transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         #dropZone p {
-            margin-bottom: 0.75rem; /* mb-3 */
-        }
-        /* Theme toggle button */
-        #themeToggleButton {
-            position: absolute;
-            top: 1.5rem; /* Adjust as needed from p-6 of parent */
-            right: 1.5rem; /* Adjust as needed from p-6 of parent */
-            width: 2.5rem; /* 40px */
-            height: 2.5rem; /* 40px */
-            padding: 0.5rem; /* p-2 */
+            margin-bottom: 0.75rem;
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-100 dark:bg-slate-900 min-h-screen p-4 md:p-8 flex items-center justify-center transition-colors duration-300">
-    <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl relative transition-colors duration-300">
-        <button id="themeToggleButton" aria-label="Toggle theme" class="rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800">
-            </button>
+<body class="bg-slate-900 min-h-screen p-4 md:p-8 flex items-center justify-center transition-colors duration-300">
+    <div class="bg-slate-800 p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl relative transition-colors duration-300">
 
-        <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-700 dark:text-slate-200" title="Click to reset form (or press Backspace outside inputs)">Data Extractor & Formatter</h1>
+        <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-slate-200" title="Click to reset form (or press Backspace outside inputs)">Data Extractor & Formatter</h1>
 
-        <div class="mb-4 border-b border-gray-200 dark:border-slate-700">
+        <div class="mb-4 border-b border-slate-700">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
             </nav>
         </div>
 
         <div class="mb-4">
-            <label for="dataInput" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Paste your data here:</label>
+            <label for="dataInput" class="block text-sm font-medium text-slate-300 mb-1">Paste your data here:</label>
             <div class="flex items-center space-x-2">
-                <textarea id="dataInput" rows="6" class="flex-grow p-3 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 text-sm resize-y bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;..."></textarea>
-                <button id="pasteButton" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400 dark:ring-offset-slate-800 transition duration-150 ease-in-out text-sm">Paste</button>
+                <textarea id="dataInput" rows="6" class="flex-grow p-3 border border-slate-600 rounded-md shadow-sm focus:ring-indigo-400 focus:border-indigo-400 text-sm resize-y bg-slate-700 text-slate-100 placeholder-slate-400" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;..."></textarea>
+                <button id="pasteButton" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:ring-offset-slate-800 transition duration-150 ease-in-out text-sm">Paste</button>
             </div>
         </div>
 
         <div class="my-4 flex items-center">
-            <div class="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
-            <span class="flex-shrink mx-4 text-gray-500 dark:text-slate-400 text-sm">OR</span>
-            <div class="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+            <div class="flex-grow border-t border-slate-600"></div>
+            <span class="flex-shrink mx-4 text-slate-400 text-sm">OR</span>
+            <div class="flex-grow border-t border-slate-600"></div>
         </div>
 
-        <div id="dropZone" class="mb-6 bg-gray-50 dark:bg-slate-700 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg">
-            <p class="text-sm text-gray-500 dark:text-slate-400">Drag & Drop an image here</p>
-            <label for="imageInput" id="imageUploadLabel" class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white">Choose Image</label>
+        <div id="dropZone" class="mb-6 bg-slate-700 border-2 border-dashed border-slate-600 rounded-lg">
+            <p class="text-sm text-slate-400">Drag & Drop an image here</p>
+            <label for="imageInput" id="imageUploadLabel" class="bg-blue-600 hover:bg-blue-700 text-white">Choose Image</label>
             <input type="file" id="imageInput" accept="image/*">
-            <span id="fileName" class="block text-sm text-gray-600 dark:text-slate-400 italic mt-2">No file chosen</span>
-            <p class="text-xs text-gray-500 dark:text-slate-500 mt-1">Image text will be extracted on submit. Accuracy depends on image quality.</p>
+            <span id="fileName" class="block text-sm text-slate-400 italic mt-2">No file chosen</span>
+            <p class="text-xs text-slate-500 mt-1">Image text will be extracted on submit. Accuracy depends on image quality.</p>
         </div>
 
 
         <div class="flex justify-end mb-6">
-            <button id="submitButton" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-green-400 dark:ring-offset-slate-800 transition duration-150 ease-in-out font-medium flex items-center justify-center">
+            <button id="submitButton" class="px-5 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 dark:ring-offset-slate-800 transition duration-150 ease-in-out font-medium flex items-center justify-center">
                 <span>Submit</span>
                 <div id="submitSpinner" class="loader hidden ml-2"></div>
             </button>
@@ -157,17 +144,17 @@
 
         <div id="outputSection" class="space-y-4 hidden">
             <div>
-                <h2 class="text-lg font-semibold mb-3 text-gray-700 dark:text-slate-200 border-b border-gray-200 dark:border-slate-700 pb-2">Extracted Information</h2>
-                <div id="extractedInfo" class="space-y-1 bg-gray-50 dark:bg-slate-700/50 p-4 rounded-md shadow-inner">
-                    </div>
+                <h2 class="text-lg font-semibold mb-3 text-slate-200 border-b border-slate-700 pb-2">Extracted Information</h2>
+                <div id="extractedInfo" class="space-y-1 bg-slate-700/50 p-4 rounded-md shadow-inner">
+                </div>
             </div>
 
             <div>
-                <h2 class="text-lg font-semibold mb-3 text-gray-700 dark:text-slate-200 border-b border-gray-200 dark:border-slate-700 pb-2">Generated Filename</h2>
-                <div class="filename-section bg-gray-50 dark:bg-slate-700/50">
-                    <div id="filenameOutput" class="text-sm text-gray-800 dark:text-slate-200 break-words">
-                        </div>
-                    <button id="copyFilenameButton" class="copy-btn bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">Copy</button>
+                <h2 class="text-lg font-semibold mb-3 text-slate-200 border-b border-slate-700 pb-2">Generated Filename</h2>
+                <div class="filename-section bg-slate-700/50">
+                    <div id="filenameOutput" class="text-sm text-slate-200 break-words">
+                    </div>
+                    <button id="copyFilenameButton" class="copy-btn bg-slate-600 text-slate-200 hover:bg-slate-500">Copy</button>
                 </div>
             </div>
         </div>
@@ -177,7 +164,6 @@
     </div>
 
     <script>
-        // DOM Elements
         const dataInput = document.getElementById('dataInput');
         const pasteButton = document.getElementById('pasteButton');
         const submitButton = document.getElementById('submitButton');
@@ -191,48 +177,12 @@
         const fileNameSpan = document.getElementById('fileName');
         const submitSpinner = document.getElementById('submitSpinner');
         const dropZone = document.getElementById('dropZone');
-        const themeToggleButton = document.getElementById('themeToggleButton');
 
         let selectedFile = null;
 
-        // SVG Icons for Theme Toggle
-        const sunIcon = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-6.364-.386 1.591-1.591M3 12h2.25m.386-6.364 1.591 1.591M12 12a2.25 2.25 0 0 0-2.25 2.25c0 1.242.902 2.25 2.036 2.25s2.036-1.008 2.036-2.25A2.25 2.25 0 0 0 12 12Z" />
-            </svg>`;
-        const moonIcon = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-            </svg>`;
-
-        // Theme Management
-        function applyTheme(theme) {
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-                themeToggleButton.innerHTML = sunIcon; // Show sun icon to switch to light
-                themeToggleButton.setAttribute('aria-label', 'Switch to light mode');
-            } else {
-                document.documentElement.classList.remove('dark');
-                themeToggleButton.innerHTML = moonIcon; // Show moon icon to switch to dark
-                themeToggleButton.setAttribute('aria-label', 'Switch to dark mode');
-            }
-            localStorage.setItem('theme', theme);
-        }
-
-        themeToggleButton.addEventListener('click', () => {
-            const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
-        });
-
-        // Initialize theme on page load
-        const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark if no preference
-        applyTheme(savedTheme);
-
-
-        // Utility Functions
         function showMessage(text, isError = false, duration = 3000) {
             messageBox.textContent = text;
-            messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`;
+            messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-400' : 'text-green-400'}`;
             messageBox.classList.remove('hidden');
             if (messageBox.timeoutId) {
                 clearTimeout(messageBox.timeoutId);
@@ -262,11 +212,11 @@
                 return;
             }
 
-            const originalButtonClasses = buttonElement.className; // Store all classes
+            const originalButtonClasses = buttonElement.className;
             const originalText = buttonElement.textContent;
 
             buttonElement.textContent = 'Copied!';
-            buttonElement.className = 'copy-btn copied'; // Apply only base and 'copied' class
+            buttonElement.className = 'copy-btn copied'; 
 
             if (navigator.clipboard && window.isSecureContext) {
                 try {
@@ -274,7 +224,7 @@
                     if (buttonElement.timeoutId) clearTimeout(buttonElement.timeoutId);
                     buttonElement.timeoutId = setTimeout(() => {
                         buttonElement.textContent = originalText;
-                        buttonElement.className = originalButtonClasses; // Restore all original classes
+                        buttonElement.className = originalButtonClasses; 
                         buttonElement.timeoutId = null;
                     }, 1500);
                     return;
@@ -297,7 +247,7 @@
                     if (buttonElement.timeoutId) clearTimeout(buttonElement.timeoutId);
                     buttonElement.timeoutId = setTimeout(() => {
                         buttonElement.textContent = originalText;
-                        buttonElement.className = originalButtonClasses; // Restore all original classes
+                        buttonElement.className = originalButtonClasses; 
                         buttonElement.timeoutId = null;
                     }, 1500);
                     showMessage('Text copied (using fallback).');
@@ -308,11 +258,10 @@
                 console.error('Fallback copy failed: ', err);
                 showMessage('Failed to copy text. Clipboard access might be blocked.', true, 4000);
                 buttonElement.textContent = originalText;
-                buttonElement.className = originalButtonClasses; // Restore on failure
+                buttonElement.className = originalButtonClasses; 
             }
         }
 
-        // Core Logic: Extraction and Parsing
         function extractValue(text, key) {
             const keyIndex = text.indexOf(key);
             if (keyIndex === -1) return null;
@@ -368,27 +317,35 @@
             return { descriptive: descriptive || null, hex: hex };
         }
 
-        // UI Update Functions
         function createOutputRow(label, value, copyValue = null) {
             if (value === null || value === undefined || String(value).trim() === '') return null;
             const finalCopyValue = (copyValue !== null && copyValue !== undefined) ? String(copyValue) : String(value);
             const displayValue = String(value);
             const div = document.createElement('div');
-            div.className = 'output-item border-b border-gray-200 dark:border-slate-700'; // Tailwind for border
+            div.className = 'output-item border-b border-slate-700';
             const labelSpan = document.createElement('span');
-            labelSpan.className = 'output-label text-gray-600 dark:text-slate-400';
+            labelSpan.className = 'output-label text-slate-400';
             labelSpan.textContent = label + ':';
             div.appendChild(labelSpan);
             const valueSpan = document.createElement('span');
-            valueSpan.className = 'output-value text-gray-800 dark:text-slate-100';
+            valueSpan.className = 'output-value text-slate-100';
             valueSpan.textContent = displayValue;
             div.appendChild(valueSpan);
             const copyButton = document.createElement('button');
             copyButton.textContent = 'Copy';
-            copyButton.className = 'copy-btn bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500';
+            copyButton.className = 'copy-btn bg-slate-600 text-slate-200 hover:bg-slate-500';
             copyButton.onclick = () => copyToClipboard(finalCopyValue, copyButton);
             div.appendChild(copyButton);
             return div;
+        }
+        
+        function cleanColorNameForFilename(colorName) {
+            if (!colorName) return "";
+            let cleaned = colorName.replace(/\s*\([^)]*\)\s*/g, '');
+            cleaned = cleaned.replace(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi, '');
+            cleaned = cleaned.replace(/[^a-zA-Z0-9\s-]/g, '');
+            cleaned = cleaned.replace(/\s+/g, ' ').trim();
+            return cleaned;
         }
 
         function processInputText(inputText) {
@@ -399,7 +356,7 @@
             }
             extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
-            filenameOutputDiv.classList.remove('text-red-500', 'dark:text-red-400', 'italic');
+            filenameOutputDiv.classList.remove('text-red-400', 'italic');
             outputSection.classList.add('hidden');
             const keys = { sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:", textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:" };
             const rawValues = {};
@@ -417,30 +374,35 @@
                 if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
             }
             addRow('SKU', finalValues.sku); addRow('Font Style', finalValues.fontStyle); addRow('Your custom text', finalValues.customText); addRow('Text Color', finalValues.textColorDescriptive); addRow('Text Hex Code', finalValues.textColorHex); addRow('Text Outline Color', finalValues.outlineColorDescriptive); addRow('Text Outline Hex Code', finalValues.outlineColorHex); addRow('Size', finalValues.size);
+            
             if (!hasOutput && missingKeys.length === Object.keys(keys).length) {
                 const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No relevant information could be extracted.';
-                noDataMsg.className = 'text-gray-500 dark:text-slate-400 italic p-2';
+                noDataMsg.className = 'text-slate-400 italic p-2';
                 extractedInfoDiv.appendChild(noDataMsg);
             } else if (!hasOutput) {
                 const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No displayable information found after processing.';
-                noDataMsg.className = 'text-gray-500 dark:text-slate-400 italic p-2';
+                noDataMsg.className = 'text-slate-400 italic p-2';
                 extractedInfoDiv.appendChild(noDataMsg);
             }
+
             let generatedFilename = ''; let sizeAbbreviated = finalValues.size || '';
             sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L').replace(/\bHEIGHT\b/gi, 'H');
             const customTextPart = finalValues.customText || "NoText";
-            let tcFilenamePart = ""; if (finalValues.textColorDescriptive) tcFilenamePart = finalValues.textColorDescriptive.replace(/\s*\([^)]*\)\s*/g, '').trim();
-            let tocFilenamePart = ""; if (finalValues.outlineColorDescriptive) tocFilenamePart = finalValues.outlineColorDescriptive.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            
+            let tcFilenamePart = cleanColorNameForFilename(finalValues.textColorDescriptive);
+            let tocFilenamePart = cleanColorNameForFilename(finalValues.outlineColorDescriptive);
+
             const tcPart = tcFilenamePart ? `(TC-${tcFilenamePart})` : "";
             const tocPart = tocFilenamePart ? `(TOC-${tocFilenamePart})` : "";
             const sizePart = sizeAbbreviated ? `(S-${sizeAbbreviated})` : "";
             const skuPart = finalValues.sku ? `(${finalValues.sku})` : "(NoSKU)";
             generatedFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
             filenameOutputDiv.textContent = generatedFilename;
-            filenameOutputDiv.classList.remove('text-red-500', 'dark:text-red-400');
-            filenameOutputDiv.classList.add('text-gray-800', 'dark:text-slate-200');
+            filenameOutputDiv.classList.remove('text-red-400');
+            filenameOutputDiv.classList.add('text-slate-200');
+            
             if (hasOutput || filenameOutputDiv.textContent.trim() !== "") {
                 outputSection.classList.remove('hidden');
                 if (missingKeys.length > 0) showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
@@ -450,7 +412,6 @@
             }
         }
 
-        // Form Handling
         function handleFileSelect(file) {
             if (file && file.type.startsWith('image/')) {
                 selectedFile = file; fileNameSpan.textContent = file.name; dataInput.value = '';
@@ -465,13 +426,12 @@
         function resetForm() {
             dataInput.value = ''; outputSection.classList.add('hidden'); extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
-            filenameOutputDiv.classList.remove('text-red-500', 'dark:text-red-400', 'italic');
-            filenameOutputDiv.classList.add('text-gray-800', 'dark:text-slate-200');
+            filenameOutputDiv.classList.remove('text-red-400', 'italic');
+            filenameOutputDiv.classList.add('text-slate-200');
             imageInput.value = ''; selectedFile = null; fileNameSpan.textContent = 'No file chosen';
             showMessage('Form reset.');
         }
 
-        // Event Listeners
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
                 try {
@@ -485,31 +445,63 @@
         imageInput.addEventListener('change', (event) => handleFileSelect(event.target.files[0]));
 
         dropZone.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            dropZone.classList.add('dragover', 'bg-blue-100', 'dark:bg-blue-900/60', 'border-blue-400', 'dark:border-blue-500');
-            dropZone.classList.remove('bg-gray-50', 'dark:bg-slate-700', 'border-gray-300', 'dark:border-slate-600');
+            event.preventDefault(); 
+            event.stopPropagation(); 
+            dropZone.classList.add('dragover', 'bg-blue-900/60', 'border-blue-500');
+            dropZone.classList.remove('bg-slate-700', 'border-slate-600');
         });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover', 'bg-blue-100', 'dark:bg-blue-900/60', 'border-blue-400', 'dark:border-blue-500');
-            dropZone.classList.add('bg-gray-50', 'dark:bg-slate-700', 'border-gray-300', 'dark:border-slate-600');
+        dropZone.addEventListener('dragleave', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            dropZone.classList.remove('dragover', 'bg-blue-900/60', 'border-blue-500');
+            dropZone.classList.add('bg-slate-700', 'border-slate-600');
         });
         dropZone.addEventListener('drop', (event) => {
             event.preventDefault();
-            dropZone.classList.remove('dragover', 'bg-blue-100', 'dark:bg-blue-900/60', 'border-blue-400', 'dark:border-blue-500');
-            dropZone.classList.add('bg-gray-50', 'dark:bg-slate-700', 'border-gray-300', 'dark:border-slate-600');
-            if (event.dataTransfer.items) {
+            event.stopPropagation(); 
+            dropZone.classList.remove('dragover', 'bg-blue-900/60', 'border-blue-500');
+            dropZone.classList.add('bg-slate-700', 'border-slate-600');
+            
+            if (event.dataTransfer?.items) {
                 if (event.dataTransfer.items.length === 1 && event.dataTransfer.items[0].kind === 'file') {
-                    handleFileSelect(event.dataTransfer.items[0].getAsFile());
+                    const file = event.dataTransfer.items[0].getAsFile();
+                    if (file.type.startsWith('image/')) {
+                        handleFileSelect(file);
+                    } else {
+                        showMessage('Please drop an image file.', true);
+                    }
                 } else if (event.dataTransfer.items.length > 1) showMessage('Please drop only one image file.', true);
                 else showMessage('Please drop an image file.', true);
-            } else {
-                if (event.dataTransfer.files.length === 1) handleFileSelect(event.dataTransfer.files[0]);
-                else if (event.dataTransfer.files.length > 1) showMessage('Please drop only one image file.', true);
+            } else if (event.dataTransfer?.files) { 
+                if (event.dataTransfer.files.length === 1 && event.dataTransfer.files[0].type.startsWith('image/')) {
+                    handleFileSelect(event.dataTransfer.files[0]);
+                } else if (event.dataTransfer.files.length > 1) showMessage('Please drop only one image file.', true);
                 else showMessage('Please drop an image file.', true);
             }
         });
-        window.addEventListener('dragover', (e) => e.preventDefault(), false);
-        window.addEventListener('drop', (e) => e.preventDefault(), false);
+
+        window.addEventListener('dragover', (event) => {
+            event.preventDefault(); 
+        }, false);
+
+        window.addEventListener('drop', (event) => {
+            event.preventDefault(); 
+            
+            if (event.dataTransfer?.items) {
+                if (event.dataTransfer.items.length === 1 && event.dataTransfer.items[0].kind === 'file') {
+                    const file = event.dataTransfer.items[0].getAsFile();
+                     if (file.type.startsWith('image/')) {
+                        handleFileSelect(file);
+                    }
+                }
+            } else if (event.dataTransfer?.files) { 
+                if (event.dataTransfer.files.length === 1 && event.dataTransfer.files[0].type.startsWith('image/')) {
+                    handleFileSelect(event.dataTransfer.files[0]);
+                }
+            }
+             dropZone.classList.remove('dragover', 'bg-blue-900/60', 'border-blue-500');
+             dropZone.classList.add('bg-slate-700', 'border-slate-600');
+        }, false);
 
         submitButton.addEventListener('click', async () => {
             if (submitButton.disabled) return;
@@ -529,32 +521,22 @@
 
         copyFilenameButton.addEventListener('click', () => {
             const filenameToCopy = filenameOutputDiv.textContent;
-            if (!filenameOutputDiv.classList.contains('text-red-500') && !filenameOutputDiv.classList.contains('dark:text-red-400') && filenameToCopy) {
+            if (!filenameOutputDiv.classList.contains('text-red-400') && filenameToCopy) {
                 copyToClipboard(filenameToCopy, copyFilenameButton);
             } else { showMessage('Cannot copy filename error message or empty filename.', true); }
         });
 
         pageTitle.addEventListener('click', resetForm);
 
-        // Keyboard Shortcuts
         document.addEventListener('keydown', (event) => {
             const activeElement = document.activeElement;
             const targetTagName = activeElement ? activeElement.tagName.toLowerCase() : '';
+            const isTypingArea = targetTagName === 'textarea' || targetTagName === 'input' || (activeElement && activeElement.isContentEditable);
 
-            if (event.key === 'Enter') {
-                // Submit if not focused on a button or textarea (where Enter has other functions)
-                if (targetTagName !== 'button' && targetTagName !== 'textarea' && !submitButton.disabled) {
-                    event.preventDefault(); // Prevent default form submission if any
-                    submitButton.click();
-                }
-            } else if (event.key === 'Backspace') {
-                // Reset form if not typing in an input/textarea or contentEditable element
-                if (targetTagName !== 'textarea' &&
-                    targetTagName !== 'input' &&
-                    !(activeElement && activeElement.isContentEditable)) {
-                    event.preventDefault(); // Prevent browser back navigation
-                    resetForm();
-                }
+            if (event.key === 'Enter' && !isTypingArea && targetTagName !== 'button' && !submitButton.disabled) {
+                event.preventDefault(); submitButton.click();
+            } else if (event.key === 'Backspace' && !isTypingArea) {
+                event.preventDefault(); resetForm();
             }
         });
     </script>
