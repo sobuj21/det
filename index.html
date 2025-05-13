@@ -179,6 +179,7 @@
         const dropZone = document.getElementById('dropZone');
 
         let selectedFile = null;
+        let hasProcessedOnce = false; // Flag to track if a process has occurred
 
         function showMessage(text, isError = false, duration = 3000) {
             messageBox.textContent = text;
@@ -408,6 +409,7 @@
                 if (missingKeys.length > 0) showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
                 else showMessage('Data processed successfully!');
                 outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                hasProcessedOnce = true; // Set flag after successful processing
             } else {
                 showMessage('No data to display after processing.', true);
             }
@@ -415,11 +417,15 @@
 
         function handleFileSelect(file) {
             if (file && file.type.startsWith('image/')) {
+                if (hasProcessedOnce) { // If a previous process happened, reset first
+                    resetForm();
+                    // hasProcessedOnce will be reset to false within resetForm
+                }
                 selectedFile = file; 
                 fileNameSpan.textContent = file.name; 
                 dataInput.value = '';
                 imageInput.files = createFileList(file);
-                if (!submitButton.disabled) { // Auto-submit if not already processing
+                if (!submitButton.disabled) { 
                     submitButton.click();
                 }
             } else { 
@@ -438,6 +444,7 @@
             filenameOutputDiv.classList.add('text-slate-200');
             imageInput.value = ''; selectedFile = null; fileNameSpan.textContent = 'No file chosen';
             showMessage('Form reset.');
+            hasProcessedOnce = false; // Reset the flag
         }
 
         pasteButton.addEventListener('click', async () => {
@@ -446,6 +453,7 @@
                     const text = await navigator.clipboard.readText();
                     dataInput.value = text; imageInput.value = ''; selectedFile = null; fileNameSpan.textContent = 'No file chosen';
                     showMessage('Text pasted successfully!');
+                    hasProcessedOnce = false; // Pasting text is like a new start
                 } catch (err) { console.error('Clipboard read failed: ', err); showMessage('Failed to paste. Check permissions or HTTPS.', true, 4000); }
             } else { showMessage('Clipboard paste not available/supported (requires HTTPS).', true, 4000); }
         });
