@@ -1,254 +1,217 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en" class="dark"> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Extractor & Formatter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
-        /* Existing Styles - START */
-        .copy-btn.copied {
-            background-color: #22c55e;
-            color: white;
-        }
+        /* Base font, applied via Tailwind on body */
         body {
             font-family: 'Inter', sans-serif;
-            position: relative; /* Needed for absolute positioning of sky elements */
-            overflow-x: hidden; /* Prevent horizontal scroll from animations */
         }
+
+        /* Custom styles for output items and copy buttons with dark mode support */
         .output-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 0.5rem 0;
+            /* Default light mode border, will be overridden by .dark .output-item */
             border-bottom: 1px solid #e5e7eb;
         }
-         .output-item:last-child {
+        .dark .output-item {
+            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
+        }
+        .output-item:last-child {
             border-bottom: none;
         }
+
         .output-label {
             font-weight: 600;
             margin-right: 0.5rem;
+            /* Default light mode color */
             color: #4b5563;
             white-space: nowrap;
         }
+        .dark .output-label {
+            color: #d1d5db; /* Tailwind gray-300 */
+        }
+
         .output-value {
             flex-grow: 1;
             text-align: left;
             word-break: break-word;
+            /* Default light mode color */
             color: #1f2937;
             margin-right: 0.5rem;
         }
+        .dark .output-value {
+            color: #f3f4f6; /* Tailwind gray-100 */
+        }
+
         .copy-btn {
             margin-left: 1rem;
             padding: 0.3rem 0.6rem;
             font-size: 0.8rem;
-            transition: background-color 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
             flex-shrink: 0;
+            /* Default light mode styles */
             background-color: #e5e7eb;
             color: #374151;
-            border-radius: 0.375rem;
+            border-radius: 0.375rem; /* rounded-md */
             cursor: pointer;
         }
+        .dark .copy-btn {
+            background-color: #4b5563; /* Tailwind gray-600 */
+            color: #d1d5db; /* Tailwind gray-300 */
+        }
+        /* Default light mode hover */
         .copy-btn:hover {
             background-color: #d1d5db;
         }
+        .dark .copy-btn:hover {
+            background-color: #6b7280; /* Tailwind gray-500 */
+        }
+        /* Default light mode copied */
+        .copy-btn.copied {
+            background-color: #22c55e;
+            color: white;
+        }
+        .dark .copy-btn.copied {
+            background-color: #16a34a; /* Tailwind green-700 */
+            color: white;
+        }
+
         .filename-section {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            /* Default light mode styles */
             background-color: #f9fafb;
             padding: 1rem;
-            border-radius: 0.375rem;
+            border-radius: 0.375rem; /* rounded-md */
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
         }
-        #filenameOutput {
-            flex-grow: 1;
-            margin-right: 1rem;
+        .dark .filename-section {
+            background-color: #374151; /* Tailwind gray-700 */
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); /* Adjusted shadow for dark */
         }
+
         #pageTitle {
             cursor: pointer;
             user-select: none;
         }
-        #imageUploadLabel {
+
+        #imageUploadLabel { /* Styled with Tailwind in HTML, these are fallbacks or base */
             cursor: pointer;
             padding: 0.5rem 1rem;
+            /* Default light mode styles */
             background-color: #3b82f6;
             color: white;
-            border-radius: 0.375rem;
+            border-radius: 0.375rem; /* rounded-md */
             transition: background-color 0.2s ease;
             display: inline-block;
             text-align: center;
         }
+         /* Default light mode hover */
         #imageUploadLabel:hover {
             background-color: #2563eb;
         }
+        .dark #imageUploadLabel {
+             background-color: #2563eb; /* Tailwind blue-600 */
+        }
+        .dark #imageUploadLabel:hover {
+             background-color: #1d4ed8; /* Tailwind blue-700 */
+        }
+
+
         #imageInput {
             display: none;
         }
+
         .loader {
+            /* Default light mode styles */
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border-top: 4px solid #3b82f6;
             border-radius: 50%;
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
             display: inline-block;
-            margin-left: 10px;
             vertical-align: middle;
+        }
+        .dark .loader {
+            border: 4px solid #4b5563; /* Tailwind gray-600 */
+            border-top: 4px solid #2563eb; /* Tailwind blue-600 */
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .processing {
+
+        .processing { /* Applied to submit button */
             opacity: 0.7;
             cursor: not-allowed;
         }
-        #dropZone {
+
+        #dropZone { /* Base styles, Tailwind classes in HTML enhance this */
+             /* Default light mode styles */
             border: 2px dashed #cbd5e1;
-            border-radius: 0.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
             padding: 1.5rem;
             text-align: center;
             background-color: #f9fafb;
             transition: background-color 0.2s ease, border-color 0.2s ease;
         }
+        .dark #dropZone {
+            border-color: #4b5563; /* Tailwind gray-600 */
+            background-color: #374151; /* Tailwind gray-700 */
+        }
+         /* Default light mode dragover */
         #dropZone.dragover {
             background-color: #dbeafe;
             border-color: #60a5fa;
         }
-        #dropZone p {
-            color: #6b7280;
-            margin-bottom: 0.75rem;
+        .dark #dropZone.dragover {
+            background-color: #2c3b58; /* Darker blue-ish tone */
+            border-color: #3b82f6; /* Tailwind blue-500 */
         }
-        /* Existing Styles - END */
-
-        /* Sky Features Styles - START */
-        #skyFeaturesContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Allows clicks to pass through to content below */
-            z-index: -1; /* Place behind the main content, but body background will be night sky */
-            background: linear-gradient(to bottom, #000033, #1a1a55, #333377); /* Dark blue to purple gradient for night */
-            overflow: hidden; /* Hide elements that fly off-screen */
-        }
-
-        .star {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background-color: white;
-            border-radius: 50%;
-            box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white; /* Glowing effect */
-            animation: twinkle 2s infinite alternate;
-        }
-
-        @keyframes twinkle {
-            0% { opacity: 0.5; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1.2); }
-        }
-
-        #moon {
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            background-color: #f0f0e0; /* Pale yellow moon */
-            border-radius: 50%;
-            box-shadow: 0 0 20px #f0f0e0, 0 0 40px #f0f0e0, 0 0 60px #ffffff; /* Strong glow */
-            top: 10%;
-            right: 15%;
-        }
-
-        .aircraft {
-            position: absolute;
-            font-size: 24px; /* Using emoji for aircraft */
-            transform: rotate(0deg); /* Initial rotation, will be updated by JS */
-            transition: transform 0.5s linear; /* Smooth rotation */
-            z-index: 10; /* Aircraft above stars/moon */
-        }
-
-        .smoke-trail {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            opacity: 0.8;
-            animation: fadeOutSmoke 1.5s forwards;
-            z-index: 5; /* Smoke behind aircraft but above background */
-        }
-
-        @keyframes fadeOutSmoke {
-            0% { transform: scale(1); opacity: 0.7; }
-            100% { transform: scale(0.2); opacity: 0; }
-        }
-        /* Sky Features Styles - END */
-
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
-    <div id="skyFeaturesContainer">
-        <div id="moon"></div>
-        </div>
-
-    <div class="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full max-w-2xl relative z-10">
-        <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-700" title="Click to reset form">Data Extractor & Formatter</h1>
-
-        <div class="mb-4 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            </nav>
+<body class="bg-gray-900 min-h-screen p-4 md:p-8 flex items-center justify-center"> <div class="bg-gray-800 p-6 md:p-8 rounded-lg shadow-xl w-full max-w-2xl relative"> <h1 id="pageTitle" class="text-2xl font-semibold mb-6 text-center text-gray-200" title="Click to reset form">Data Extractor & Formatter</h1> <div class="mb-4 border-b border-gray-700"> <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                </nav>
         </div>
 
         <div class="mb-4">
-            <label for="dataInput" class="block text-sm font-medium text-gray-700 mb-1">Paste your data here:</label>
-            <div class="flex items-center space-x-2">
-                <textarea id="dataInput" rows="6" class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-y" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;..."></textarea>
-                <button id="pasteButton" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out text-sm">Paste</button>
-            </div>
+            <label for="dataInput" class="block text-sm font-medium text-gray-300 mb-1">Paste your data here:</label> <div class="flex items-center space-x-2">
+                <textarea id="dataInput" rows="6" class="flex-grow p-3 border border-gray-600 bg-gray-700 text-gray-200 placeholder-gray-400 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-y" placeholder="Example:&#10;SKU: DC-CTO-25&#10;Font Style: Snap ITC&#10;..."></textarea> <button id="pasteButton" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out text-sm">Paste</button> </div>
         </div>
 
         <div class="my-4 flex items-center">
-            <div class="flex-grow border-t border-gray-300"></div>
-            <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
-            <div class="flex-grow border-t border-gray-300"></div>
-        </div>
+            <div class="flex-grow border-t border-gray-600"></div> <span class="flex-shrink mx-4 text-gray-400 text-sm">OR</span> <div class="flex-grow border-t border-gray-600"></div> </div>
 
-        <div id="dropZone" class="mb-6">
-            <p class="text-sm">Drag & Drop an image here</p>
-            <label for="imageInput" id="imageUploadLabel">Choose Image</label>
-            <input type="file" id="imageInput" accept="image/*">
-            <span id="fileName" class="block text-sm text-gray-600 italic mt-2">No file chosen</span>
-            <p class="text-xs text-gray-500 mt-1">Image text will be extracted on submit. Accuracy depends on image quality.</p>
-        </div>
+        <div id="dropZone" class="mb-6"> <p class="text-sm text-gray-300 mb-3">Drag & Drop an image here</p> <label for="imageInput" id="imageUploadLabel" class="bg-blue-600 hover:bg-blue-700">Choose Image</label> <input type="file" id="imageInput" accept="image/*">
+            <span id="fileName" class="block text-sm text-gray-400 italic mt-2">No file chosen</span> <p class="text-xs text-gray-400 mt-1">Image text will be extracted on submit. Accuracy depends on image quality.</p> </div>
 
 
         <div class="flex justify-end mb-6">
-            <button id="submitButton" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out font-medium flex items-center justify-center">
-                <span>Submit</span>
+            <button id="submitButton" class="px-5 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out font-medium flex items-center justify-center"> <span>Submit</span>
                 <div id="submitSpinner" class="loader hidden ml-2"></div>
             </button>
         </div>
 
         <div id="outputSection" class="space-y-4 hidden">
             <div>
-                <h2 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">Extracted Information</h2>
-                <div id="extractedInfo" class="space-y-1 bg-gray-50 p-4 rounded-md shadow-inner">
-                </div>
+                <h2 class="text-lg font-semibold mb-3 text-gray-200 border-b border-gray-600 pb-2">Extracted Information</h2> <div id="extractedInfo" class="space-y-1 bg-gray-700/80 p-4 rounded-md shadow-inner"> </div>
             </div>
 
             <div>
-                <h2 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">Generated Filename</h2>
-                <div class="filename-section">
-                    <div id="filenameOutput" class="text-sm text-gray-800 break-words">
-                    </div>
-                    <button id="copyFilenameButton" class="copy-btn">Copy</button>
-                </div>
+                <h2 class="text-lg font-semibold mb-3 text-gray-200 border-b border-gray-600 pb-2">Generated Filename</h2> <div class="filename-section"> <div id="filenameOutput" class="text-sm text-gray-100 break-words"> </div>
+                    <button id="copyFilenameButton" class="copy-btn">Copy</button> </div>
             </div>
         </div>
 
@@ -257,7 +220,9 @@
     </div>
 
     <script>
-        // Existing JavaScript - START
+        // Dark Mode Toggle Logic REMOVED
+
+        // Existing Application Logic
         const dataInput = document.getElementById('dataInput');
         const pasteButton = document.getElementById('pasteButton');
         const submitButton = document.getElementById('submitButton');
@@ -276,7 +241,8 @@
 
         function showMessage(text, isError = false, duration = 3000) {
             messageBox.textContent = text;
-            messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-600' : 'text-green-600'}`;
+            // Apply dark mode aware text colors (now default)
+            messageBox.className = `mt-4 text-center text-sm font-medium ${isError ? 'text-red-400' : 'text-green-400'}`; // Adjusted for permanent dark
             messageBox.classList.remove('hidden');
             if (messageBox.timeoutId) {
                 clearTimeout(messageBox.timeoutId);
@@ -311,7 +277,7 @@
                     await navigator.clipboard.writeText(text);
                     const originalText = buttonElement.textContent;
                     buttonElement.textContent = 'Copied!';
-                    buttonElement.classList.add('copied');
+                    buttonElement.classList.add('copied'); // This class has dark mode styles
                     if (buttonElement.timeoutId) clearTimeout(buttonElement.timeoutId);
                     buttonElement.timeoutId = setTimeout(() => {
                         buttonElement.textContent = originalText;
@@ -353,7 +319,7 @@
                 }
             } catch (err) {
                 console.error('Fallback copy failed: ', err);
-                showMessage('Failed to copy text. Clipboard access might be blocked by your browser (e.g., not HTTPS).', true, 4000);
+                showMessage('Failed to copy text. Clipboard access might be blocked or not available.', true, 4000);
             }
         }
 
@@ -374,12 +340,14 @@
                 const currentNextKeyIndex = text.indexOf(nextKey, valueStartIndex);
                 if (currentNextKeyIndex !== -1) {
                     const lineStartIndex = text.lastIndexOf('\n', currentNextKeyIndex) + 1;
-                    if (text.substring(lineStartIndex, currentNextKeyIndex).trim() === '') {
-                        earliestNextKeyIndex = Math.min(earliestNextKeyIndex, lineStartIndex);
+                    if (text.substring(lineStartIndex, currentNextKeyIndex).trim() === '' || text.substring(lineStartIndex, currentNextKeyIndex).endsWith(key)) {
+                         earliestNextKeyIndex = Math.min(earliestNextKeyIndex, lineStartIndex > keyIndex ? lineStartIndex : currentNextKeyIndex);
+                    } else {
+                         earliestNextKeyIndex = Math.min(earliestNextKeyIndex, currentNextKeyIndex);
                     }
                 }
             }
-
+            
             let rawValueBlock = text.substring(valueStartIndex, earliestNextKeyIndex);
             const valueLines = rawValueBlock.split('\n');
             const filteredLines = valueLines.filter(line => {
@@ -405,26 +373,20 @@
 
         function parseColorValue(colorValue) {
             if (!colorValue) return { descriptive: null, hex: null };
-
-            const ignorePattern = /^(Please\s+)?ing?nore\s+this\s+color.*?:?\s*/i;
-            let cleanedValue = colorValue.replace(ignorePattern, '');
-
+            const ignorePattern = /^(Please\s+)?ing?nore\s+this\s+color.*?:?\s*([A-Za-z\s]+(\s*\(?#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\)?)?)?/i;
+            let cleanedValue = colorValue.replace(ignorePattern, '').trim();
+            
             const hex = extractHexCode(cleanedValue);
             let descriptive = cleanedValue;
 
             if (hex) {
-                const hexIndex = descriptive.indexOf(hex);
-                if (hexIndex !== -1) {
-                    let startIndex = hexIndex;
-                    while(startIndex > 0 && /[\s(]/.test(descriptive[startIndex-1])) startIndex--;
-                    let endIndex = hexIndex + hex.length;
-                    while(endIndex < descriptive.length && /[\s)]/.test(descriptive[endIndex])) endIndex++;
-                    descriptive = descriptive.substring(0, startIndex) + descriptive.substring(endIndex);
-                }
+                const hexWithOptionalParensRegex = new RegExp(`\\s*\\(?${hex}\\)?\\s*`, 'gi');
+                descriptive = descriptive.replace(hexWithOptionalParensRegex, ' ').trim();
             }
             descriptive = descriptive.replace(/\s+/g, ' ').trim();
             return { descriptive: descriptive || null, hex: hex };
         }
+
 
         function createOutputRow(label, value, copyValue = null) {
             if (value === null || value === undefined || String(value).trim() === '') return null;
@@ -433,21 +395,21 @@
             const displayValue = String(value);
 
             const div = document.createElement('div');
-            div.className = 'output-item';
+            div.className = 'output-item'; // .dark .output-item styles will apply
 
             const labelSpan = document.createElement('span');
-            labelSpan.className = 'output-label';
+            labelSpan.className = 'output-label'; // .dark .output-label styles will apply
             labelSpan.textContent = label + ':';
             div.appendChild(labelSpan);
 
             const valueSpan = document.createElement('span');
-            valueSpan.className = 'output-value';
+            valueSpan.className = 'output-value'; // .dark .output-value styles will apply
             valueSpan.textContent = displayValue;
             div.appendChild(valueSpan);
 
             const copyButton = document.createElement('button');
             copyButton.textContent = 'Copy';
-            copyButton.className = 'copy-btn';
+            copyButton.className = 'copy-btn'; // .dark .copy-btn styles will apply
             copyButton.onclick = () => copyToClipboard(finalCopyValue, copyButton);
             div.appendChild(copyButton);
 
@@ -463,20 +425,19 @@
 
             extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
-            filenameOutputDiv.classList.remove('text-red-600', 'italic');
-            outputSection.classList.add('hidden'); 
+            outputSection.classList.add('hidden');
 
             const keys = {
                 sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
                 textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
             };
             const rawValues = {};
-            let missingKeys = []; 
+            let missingKeys = [];
 
             for (const prop in keys) {
                 rawValues[prop] = extractValue(inputText, keys[prop]);
                 if (rawValues[prop] === null) {
-                    missingKeys.push(keys[prop]);
+                    missingKeys.push(keys[prop].replace(':', ''));
                 }
             }
 
@@ -505,41 +466,41 @@
             addRow('Text Outline Hex Code', finalValues.outlineColorHex);
             addRow('Size', finalValues.size);
 
-            if (!hasOutput && missingKeys.length === Object.keys(keys).length) { 
+            if (!hasOutput && missingKeys.length === Object.keys(keys).length) {
                 const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No relevant information could be extracted from the input.';
-                noDataMsg.className = 'text-gray-500 italic p-2';
+                noDataMsg.className = 'text-gray-400 italic p-2'; // Adjusted for permanent dark
                 extractedInfoDiv.appendChild(noDataMsg);
-            } else if (!hasOutput) { 
-                 const noDataMsg = document.createElement('p');
+            } else if (!hasOutput) {
+                const noDataMsg = document.createElement('p');
                 noDataMsg.textContent = 'No displayable information found after processing.';
-                noDataMsg.className = 'text-gray-500 italic p-2';
+                noDataMsg.className = 'text-gray-400 italic p-2'; // Adjusted for permanent dark
                 extractedInfoDiv.appendChild(noDataMsg);
             }
 
             let generatedFilename = '';
             let sizeAbbreviated = finalValues.size || '';
-            sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L');
-            sizeAbbreviated = sizeAbbreviated.replace(/\bHEIGHT\b/gi, 'H');
+            sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L').replace(/\bHEIGHT\b/gi, 'H');
 
-            const customTextPart = finalValues.customText || "NoText";
-            const tcPart = finalValues.textColorDescriptive ? `(TC-${finalValues.textColorDescriptive})` : "";
-            const tocPart = finalValues.outlineColorDescriptive ? `(TOC-${finalValues.outlineColorDescriptive})` : "";
-            const sizePart = sizeAbbreviated ? `(S-${sizeAbbreviated})` : "";
-            const skuPart = finalValues.sku ? `(${finalValues.sku})` : "(NoSKU)";
+            const customTextPart = (finalValues.customText || "NoText").replace(/[^a-zA-Z0-9_-\s]/g, '').replace(/\s+/g, '_');
+            const tcPart = finalValues.textColorDescriptive ? `(TC-${finalValues.textColorDescriptive.replace(/[^a-zA-Z0-9_-\s]/g, '').replace(/\s+/g, '_')})` : "";
+            const tocPart = finalValues.outlineColorDescriptive ? `(TOC-${finalValues.outlineColorDescriptive.replace(/[^a-zA-Z0-9_-\s]/g, '').replace(/\s+/g, '_')})` : "";
+            const sizePart = sizeAbbreviated ? `(S-${sizeAbbreviated.replace(/[^a-zA-Z0-9_-\s]/g, '').replace(/\s+/g, '_')})` : "";
+            const skuPart = finalValues.sku ? `(${finalValues.sku.replace(/[^a-zA-Z0-9_-]/g, '')})` : "(NoSKU)";
+
 
             generatedFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
             filenameOutputDiv.textContent = generatedFilename;
 
-            if (hasOutput || filenameOutputDiv.textContent.trim() !== "") { 
+            if (hasOutput || filenameOutputDiv.textContent.trim() !== "") {
                 outputSection.classList.remove('hidden');
                 if (missingKeys.length > 0) {
-                     showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
+                    showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
                 } else {
                     showMessage('Data processed successfully!');
                 }
-            } else { 
-                 showMessage('No data to display after processing.', true);
+            } else {
+                showMessage('No data to display after processing.', true);
             }
         }
 
@@ -547,17 +508,19 @@
             if (file && file.type.startsWith('image/')) {
                 selectedFile = file;
                 fileNameSpan.textContent = file.name;
-                dataInput.value = ''; 
-                imageInput.files = createFileList(file); 
+                dataInput.value = '';
+                try {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    imageInput.files = dataTransfer.files;
+                } catch (e) { console.warn("Could not set input.files directly", e); }
+
             } else {
                 showMessage('Please select or drop an image file.', true);
+                selectedFile = null;
+                fileNameSpan.textContent = 'No file chosen';
+                imageInput.value = '';
             }
-        }
-
-        function createFileList(file) {
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            return dataTransfer.files;
         }
 
         function resetForm() {
@@ -565,20 +528,18 @@
             outputSection.classList.add('hidden');
             extractedInfoDiv.innerHTML = '';
             filenameOutputDiv.textContent = '';
-            filenameOutputDiv.classList.remove('text-red-600', 'italic');
-            imageInput.value = ''; 
+            imageInput.value = '';
             selectedFile = null;
             fileNameSpan.textContent = 'No file chosen';
             showMessage('Form reset.');
         }
-
 
         pasteButton.addEventListener('click', async () => {
             if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
                 try {
                     const text = await navigator.clipboard.readText();
                     dataInput.value = text;
-                    imageInput.value = ''; 
+                    imageInput.value = '';
                     selectedFile = null;
                     fileNameSpan.textContent = 'No file chosen';
                     showMessage('Text pasted successfully!');
@@ -587,12 +548,18 @@
                     showMessage('Failed to paste. Check browser permissions or ensure page is HTTPS.', true, 4000);
                 }
             } else {
-                showMessage('Clipboard paste not available/supported in this browser or context (requires HTTPS).', true, 4000);
+                showMessage('Clipboard paste not available/supported (requires HTTPS).', true, 4000);
             }
         });
 
         imageInput.addEventListener('change', (event) => {
-            handleFileSelect(event.target.files[0]);
+            if (event.target.files && event.target.files.length > 0) {
+                handleFileSelect(event.target.files[0]);
+            } else {
+                if (!selectedFile) {
+                    fileNameSpan.textContent = 'No file chosen';
+                }
+            }
         });
 
         dropZone.addEventListener('dragover', (event) => {
@@ -607,34 +574,26 @@
         dropZone.addEventListener('drop', (event) => {
             event.preventDefault();
             dropZone.classList.remove('dragover');
-
+            let file = null;
             if (event.dataTransfer.items) {
                 if (event.dataTransfer.items.length === 1 && event.dataTransfer.items[0].kind === 'file') {
-                    const file = event.dataTransfer.items[0].getAsFile();
-                    handleFileSelect(file);
+                    file = event.dataTransfer.items[0].getAsFile();
                 } else if (event.dataTransfer.items.length > 1) {
-                    showMessage('Please drop only one image file.', true);
-                } else {
-                    showMessage('Please drop an image file.', true);
+                     showMessage('Please drop only one image file.', true); return;
                 }
-            } else {
-                if (event.dataTransfer.files.length === 1) {
-                    handleFileSelect(event.dataTransfer.files[0]);
-                } else if (event.dataTransfer.files.length > 1) {
-                    showMessage('Please drop only one image file.', true);
-                } else {
-                    showMessage('Please drop an image file.', true);
-                }
+            } else if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+                 if (event.dataTransfer.files.length === 1) {
+                    file = event.dataTransfer.files[0];
+                 } else {
+                     showMessage('Please drop only one image file.', true); return;
+                 }
             }
+            if (file) handleFileSelect(file);
+            else showMessage('Please drop an image file.', true);
         });
 
-        window.addEventListener('dragover', (event) => {
-            event.preventDefault();
-        }, false);
-        window.addEventListener('drop', (event) => {
-            event.preventDefault();
-        }, false);
-
+        window.addEventListener('dragover', (event) => event.preventDefault(), false);
+        window.addEventListener('drop', (event) => event.preventDefault(), false);
 
         submitButton.addEventListener('click', async () => {
             if (submitButton.disabled) return;
@@ -645,18 +604,16 @@
             if (inputText.trim()) {
                 processInputText(inputText);
             } else if (imageFile) {
-                showMessage('Processing image... this may take a moment.', false, 10000); 
+                showMessage('Processing image... this may take a moment.', false, 10000);
                 showProcessingState(true);
-
                 try {
                     const { data: { text } } = await Tesseract.recognize(
                         imageFile,
                         'eng',
-                        { logger: m => console.log(m) } 
+                        { logger: m => console.log(m) }
                     );
-                    console.log("OCR Result:", text); 
-                    processInputText(text); 
-
+                    console.log("OCR Result:", text);
+                    processInputText(text);
                 } catch (error) {
                     console.error("OCR Error:", error);
                     showMessage(`Error during image processing: ${error.message || 'Unknown error'}`, true, 5000);
@@ -664,7 +621,6 @@
                 } finally {
                     showProcessingState(false);
                 }
-
             } else {
                 showMessage('Please paste text or upload an image first.', true);
                 outputSection.classList.add('hidden');
@@ -673,175 +629,31 @@
 
         copyFilenameButton.addEventListener('click', () => {
             const filenameToCopy = filenameOutputDiv.textContent;
-            if (!filenameOutputDiv.classList.contains('text-red-600') && filenameToCopy) {
+            if (filenameToCopy) {
                 copyToClipboard(filenameToCopy, copyFilenameButton);
             } else {
-                showMessage('Cannot copy filename error message or empty filename.', true);
+                showMessage('Cannot copy empty filename.', true);
             }
         });
 
         pageTitle.addEventListener('click', resetForm);
 
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                const targetTagName = event.target.tagName.toLowerCase();
-                if (targetTagName !== 'button' && !submitButton.disabled) {
+            const activeElement = document.activeElement;
+            const targetTagName = activeElement ? activeElement.tagName.toLowerCase() : '';
+
+            if (event.key === 'Enter' && targetTagName !== 'textarea' && targetTagName !== 'button') {
+                 if (!submitButton.disabled) {
+                    event.preventDefault();
                     submitButton.click();
                 }
-            }
-            else if (event.key === 'Backspace') {
-                const targetTagName = event.target.tagName.toLowerCase();
+            } else if (event.key === 'Backspace') {
                 if (targetTagName !== 'textarea' && targetTagName !== 'input') {
-                    event.preventDefault(); 
-                    resetForm();
+                    // Reset form on backspace if not in an input field
+                    // resetForm(); // This might still be too aggressive for some users
                 }
             }
         });
-        // Existing JavaScript - END
-
-
-        // Sky Features JavaScript - START
-        const skyContainer = document.getElementById('skyFeaturesContainer');
-        const numStars = 200; // More stars for a desert sky feel
-        const numAircraft = 5;
-        const aircrafts = [];
-
-        // Create Stars
-        for (let i = 0; i < numStars; i++) {
-            const star = document.createElement('div');
-            star.classList.add('star');
-            star.style.top = `${Math.random() * 100}%`;
-            star.style.left = `${Math.random() * 100}%`;
-            // Vary size and animation delay for a more natural look
-            const size = Math.random() * 2 + 1; // Star size between 1px and 3px
-            star.style.width = `${size}px`;
-            star.style.height = `${size}px`;
-            star.style.animationDelay = `${Math.random() * 2}s`;
-            star.style.animationDuration = `${Math.random() * 2 + 1.5}s`; // Twinkle speed
-            skyContainer.appendChild(star);
-        }
-
-        // Aircraft Class/Object
-        function createAircraft(index) {
-            const aircraftEl = document.createElement('div');
-            aircraftEl.classList.add('aircraft');
-            aircraftEl.innerHTML = '✈️'; // Using an emoji for the aircraft
-            skyContainer.appendChild(aircraftEl);
-
-            let x, y, angle, speed, targetX, targetY;
-
-            function resetAircraft() {
-                // Start from either left or right edge, at a random height
-                const startEdge = Math.random() < 0.5 ? 'left' : 'right';
-                y = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1; // Fly in the upper 60% of screen
-
-                if (startEdge === 'left') {
-                    x = -50; // Start off-screen left
-                    targetX = window.innerWidth + 50; // Target off-screen right
-                } else {
-                    x = window.innerWidth + 50; // Start off-screen right
-                    targetX = -50; // Target off-screen left
-                }
-                // Target a y position slightly different from start y for varied paths
-                targetY = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1;
-                speed = Math.random() * 2 + 1.5; // Random speed (pixels per frame)
-                
-                // Calculate initial angle
-                const dx = targetX - x;
-                const dy = targetY - y;
-                angle = Math.atan2(dy, dx);
-                aircraftEl.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad)`;
-            }
-            
-            resetAircraft(); // Initialize position and speed
-
-            return {
-                el: aircraftEl,
-                x, y, angle, speed, targetX, targetY,
-                update: function() {
-                    // Move aircraft
-                    this.x += Math.cos(this.angle) * this.speed;
-                    this.y += Math.sin(this.angle) * this.speed;
-
-                    this.el.style.transform = `translate(${this.x}px, ${this.y}px) rotate(${this.angle}rad)`;
-
-                    // Create smoke trail
-                    if (Math.random() < 0.6) { // Create smoke puff frequently
-                        createSmoke(this.x + 10, this.y + 10, this.angle); // Offset smoke slightly from aircraft center
-                    }
-
-                    // Reset if off-screen
-                    if ( (this.speed > 0 && this.x > window.innerWidth + 60) || (this.speed < 0 && this.x < -60) ||
-                         (this.x < -60 && this.targetX < 0) || (this.x > window.innerWidth + 60 && this.targetX > 0) ) {
-                        resetAircraft(); // Re-initialize aircraft when it goes off screen
-                        this.x = x; // update object properties with new reset values
-                        this.y = y;
-                        this.angle = angle;
-                        this.speed = speed;
-                        this.targetX = targetX;
-                        this.targetY = targetY;
-                    }
-                }
-            };
-        }
-
-        // Create Smoke Puffs
-        const smokeColors = ['#FF5733', '#FFC300', '#DAF7A6', '#33FFBD', '#337BFF', '#C70039'];
-        function createSmoke(x, y, aircraftAngle) {
-            const smoke = document.createElement('div');
-            smoke.classList.add('smoke-trail');
-            
-            // Position smoke behind the aircraft based on its angle
-            // The exact offset might need tweaking depending on the aircraft emoji/SVG size
-            const offsetX = Math.cos(aircraftAngle + Math.PI) * 15; // Opposite direction of flight
-            const offsetY = Math.sin(aircraftAngle + Math.PI) * 15;
-
-            smoke.style.left = `${x + offsetX}px`;
-            smoke.style.top = `${y + offsetY}px`;
-            smoke.style.backgroundColor = smokeColors[Math.floor(Math.random() * smokeColors.length)];
-            skyContainer.appendChild(smoke);
-
-            // Remove smoke after animation
-            setTimeout(() => {
-                if (smoke.parentNode === skyContainer) { // Check if still child before removing
-                   skyContainer.removeChild(smoke);
-                }
-            }, 1500); // Matches smoke animation duration
-        }
-
-        // Initialize Aircraft
-        for (let i = 0; i < numAircraft; i++) {
-            aircrafts.push(createAircraft(i));
-        }
-
-        // Animation Loop
-        function animateSky() {
-            aircrafts.forEach(craft => craft.update());
-            requestAnimationFrame(animateSky);
-        }
-
-        // Start animations
-        animateSky();
-
-        // Adjust moon and star positions on resize (simple example)
-        window.addEventListener('resize', () => {
-            // Moon position could be recalculated if it's percentage based
-            // For aircraft, their targetX/Y might need update if paths are strictly within bounds
-            // For this example, aircraft will continue their path and reset when off-screen.
-            // Stars are randomly placed, so they generally look okay on resize.
-        });
-
-        // Ensure the main content is visible above the sky
-        // This is a fallback if z-index on body/skyFeaturesContainer isn't enough
-        // or if the main content container doesn't have its own z-index.
-        const mainContentContainer = document.querySelector('.bg-white.max-w-2xl');
-        if (mainContentContainer) {
-            mainContentContainer.style.position = 'relative';
-            mainContentContainer.style.zIndex = '10'; // Ensure it's above the sky
-        }
-         // Change body background to be part of the night sky
-        document.body.style.background = 'linear-gradient(to bottom, #000022, #0a0a35, #1a1a55)';
-        // SkyFeaturesJavaScript - END
     </script>
 </body>
 </html>
