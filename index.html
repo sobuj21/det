@@ -34,6 +34,9 @@
             word-break: break-word;
             margin-right: 0.5rem;
         }
+        .output-value.needs-review {
+            color: #f87171; /* Tailwind red-400 for dark mode */
+        }
         .copy-btn {
             margin-left: 1rem;
             padding: 0.3rem 0.6rem;
@@ -179,7 +182,7 @@
         const dropZone = document.getElementById('dropZone');
 
         let selectedFile = null;
-        let hasProcessedOnce = false; // Flag to track if a process has occurred
+        let hasProcessedOnce = false;
 
         function showMessage(text, isError = false, duration = 3000) {
             messageBox.textContent = text;
@@ -287,7 +290,13 @@
                 for (const pattern of linesToIgnorePatterns) { if (pattern.test(trimmedLine)) return false; }
                 return true;
             });
-            let finalValue = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
+            
+            let finalValue;
+            if (key === "Your custom text:") {
+                finalValue = filteredLines.join(' ').trim();
+            } else {
+                finalValue = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
+            }
             return finalValue || null;
         }
 
@@ -318,7 +327,7 @@
             return { descriptive: descriptive || null, hex: hex };
         }
 
-        function createOutputRow(label, value, copyValue = null) {
+        function createOutputRow(label, value, copyValue = null, needsReview = false) {
             if (value === null || value === undefined || String(value).trim() === '') return null;
             const finalCopyValue = (copyValue !== null && copyValue !== undefined) ? String(copyValue) : String(value);
             const displayValue = String(value);
@@ -330,6 +339,9 @@
             div.appendChild(labelSpan);
             const valueSpan = document.createElement('span');
             valueSpan.className = 'output-value text-slate-100';
+            if (needsReview) {
+                valueSpan.classList.add('needs-review');
+            }
             valueSpan.textContent = displayValue;
             div.appendChild(valueSpan);
             const copyButton = document.createElement('button');
@@ -348,6 +360,70 @@
             cleaned = cleaned.replace(/\s+/g, ' ').trim();
             return cleaned;
         }
+
+        function formatSizeForDisplayAndFilename(rawSizeString) {
+            if (!rawSizeString) return { display: null, filenamePart: "" };
+
+            let cleanedString = rawSizeString.replace(/Option to Add Complimentary Free Squeegee/gi, "").trim();
+            
+            const dimensions = [];
+            const regex = /(\d+\.?\d*)\s*("|\u201D|inch(?:es)?)\s*(?:\(\s*(height|length|width|h|l|w)\s*\))?/gi;
+            let match;
+
+            while ((match = regex.exec(cleanedString)) !== null) {
+                const value = match[1];
+                let type = null;
+                if (match[3]) {
+                    const typeStr = match[3].toLowerCase();
+                    if (typeStr.startsWith('l')) type = 'L';
+                    else if (typeStr.startsWith('h')) type = 'H';
+                    else if (typeStr.startsWith('w')) type = 'W';
+                }
+                dimensions.push({ value, unit: "INCH", type });
+            }
+            
+            let lengthDim = dimensions.find(d => d.type === 'L');
+            let heightDim = dimensions.find(d => d.type === 'H');
+            let widthDim = dimensions.find(d => d.type === 'W');
+
+            const displayParts = [];
+            if (lengthDim) {
+                displayParts.push(`${lengthDim.value} ${lengthDim.unit} ${lengthDim.type}`);
+            }
+            if (widthDim) {
+                displayParts.push(`${widthDim.value} ${widthDim.unit} ${widthDim.type}`);
+            }
+            if (heightDim) {
+                displayParts.push(`${heightDim.value} ${heightDim.unit} ${heightDim.type}`);
+            }
+
+            if (displayParts.length > 0) {
+                const finalDisplay = displayParts.join(' ');
+                return {
+                    display: finalDisplay,
+                    filenamePart: finalDisplay 
+                };
+            } else {
+                let fallbackDisplay = cleanedString;
+                fallbackDisplay = fallbackDisplay.replace(/\bINCHES\b/gi, 'INCH').replace(/\s*("|\u201D)\s*/g, ' INCH ').trim();
+                
+                let fallbackFilenamePart = cleanedString;
+                fallbackFilenamePart = fallbackFilenamePart.replace(/\bLONG\b/gi, 'L');
+                fallbackFilenamePart = fallbackFilenamePart.replace(/\bHEIGHT\b/gi, 'H');
+                fallbackFilenamePart = fallbackFilenamePart.replace(/\bINCHES\b/gi, 'INCH');
+                fallbackFilenamePart = fallbackFilenamePart.replace(/\s*("|\u201D)\s*/g, 'INCH'); 
+                
+                return { display: fallbackDisplay.trim() || null, filenamePart: fallbackFilenamePart.trim() || "" };
+            }
+        }
+
+        function sanitizeForFilename(filenamePart) {
+            if (!filenamePart) return "";
+            // Characters forbidden in Windows filenames: < > : " / \ | ? *
+            // Also, control characters (0-31)
+            return filenamePart.replace(/[<>:"/\\|?*\x00-\x1F]/g, '');
+        }
+
 
         function processInputText(inputText) {
             if (!inputText || !inputText.trim()) {
@@ -368,13 +444,51 @@
             }
             const textColorParsed = parseColorValue(rawValues.textColorFull);
             const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
-            const finalValues = { sku: rawValues.sku, fontStyle: rawValues.fontStyle, customText: rawValues.customText, textColorDescriptive: textColorParsed.descriptive, textColorHex: textColorParsed.hex, outlineColorDescriptive: outlineColorParsed.descriptive, outlineColorHex: outlineColorParsed.hex, size: rawValues.size };
+            
+            let displaySize = null;
+            let filenameSizeForPart = "";
+            if (rawValues.size) {
+                const parsedSizeInfo = formatSizeForDisplayAndFilename(rawValues.size);
+                displaySize = parsedSizeInfo.display;
+                filenameSizeForPart = parsedSizeInfo.filenamePart;
+
+                if (filenameSizeForPart) {
+                    filenameSizeForPart = filenameSizeForPart.replace(/\bLONG\b/gi, 'L').replace(/\bHEIGHT\b/gi, 'H');
+                }
+            }
+
+            const finalValues = { 
+                sku: rawValues.sku, 
+                fontStyle: rawValues.fontStyle, 
+                customText: rawValues.customText, 
+                textColorDescriptive: textColorParsed.descriptive, 
+                textColorHex: textColorParsed.hex, 
+                outlineColorDescriptive: outlineColorParsed.descriptive, 
+                outlineColorHex: outlineColorParsed.hex, 
+                size: displaySize
+            };
+
             let hasOutput = false;
-            function addRow(label, value, copyValue = null) {
-                const row = createOutputRow(label, value, copyValue);
+            let customTextNeedsReview = false;
+            if (finalValues.customText) {
+                const spacedCapsRegex = /(?:\b[A-Z]\s){1,}[A-Z]\b/;
+                if (spacedCapsRegex.test(finalValues.customText)) {
+                    customTextNeedsReview = true;
+                }
+            }
+
+            function addRow(label, value, copyValue = null, needsReview = false) {
+                const row = createOutputRow(label, value, copyValue, needsReview);
                 if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
             }
-            addRow('SKU', finalValues.sku); addRow('Font Style', finalValues.fontStyle); addRow('Your custom text', finalValues.customText); addRow('Text Color', finalValues.textColorDescriptive); addRow('Text Hex Code', finalValues.textColorHex); addRow('Text Outline Color', finalValues.outlineColorDescriptive); addRow('Text Outline Hex Code', finalValues.outlineColorHex); addRow('Size', finalValues.size);
+            addRow('SKU', finalValues.sku); 
+            addRow('Font Style', finalValues.fontStyle); 
+            addRow('Your custom text', finalValues.customText, null, customTextNeedsReview); 
+            addRow('Text Color', cleanColorNameForFilename(finalValues.textColorDescriptive)); 
+            addRow('Text Hex Code', finalValues.textColorHex); 
+            addRow('Text Outline Color', cleanColorNameForFilename(finalValues.outlineColorDescriptive)); 
+            addRow('Text Outline Hex Code', finalValues.outlineColorHex); 
+            addRow('Size', finalValues.size);
             
             if (!hasOutput && missingKeys.length === Object.keys(keys).length) {
                 const noDataMsg = document.createElement('p');
@@ -387,19 +501,21 @@
                 noDataMsg.className = 'text-slate-400 italic p-2';
                 extractedInfoDiv.appendChild(noDataMsg);
             }
-
-            let generatedFilename = ''; let sizeAbbreviated = finalValues.size || '';
-            sizeAbbreviated = sizeAbbreviated.replace(/\bLONG\b/gi, 'L').replace(/\bHEIGHT\b/gi, 'H').replace(/\bINCHES\b/gi, 'INCH');
-            const customTextPart = finalValues.customText || "NoText";
             
+            let customTextPart = finalValues.customText || "NoText";
             let tcFilenamePart = cleanColorNameForFilename(finalValues.textColorDescriptive);
             let tocFilenamePart = cleanColorNameForFilename(finalValues.outlineColorDescriptive);
-
+            let sizeForFilename = filenameSizeForPart || "";
+            let skuForFilename = finalValues.sku || "NoSKU";
+            
             const tcPart = tcFilenamePart ? `(TC-${tcFilenamePart})` : "";
             const tocPart = tocFilenamePart ? `(TOC-${tocFilenamePart})` : "";
-            const sizePart = sizeAbbreviated ? `(S-${sizeAbbreviated})` : "";
-            const skuPart = finalValues.sku ? `(${finalValues.sku})` : "(NoSKU)";
-            generatedFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
+            const sizePart = sizeForFilename ? `(S-${sizeForFilename})` : "";
+            const skuPart = `(${skuForFilename})`;
+
+            let assembledFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
+            generatedFilename = sanitizeForFilename(assembledFilename); // Sanitize the fully assembled string
+
             filenameOutputDiv.textContent = generatedFilename;
             filenameOutputDiv.classList.remove('text-red-400');
             filenameOutputDiv.classList.add('text-slate-200');
@@ -409,7 +525,7 @@
                 if (missingKeys.length > 0) showMessage(`Data processed. Some fields might be missing: ${missingKeys.join(', ')}`, false, 4000);
                 else showMessage('Data processed successfully!');
                 outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                hasProcessedOnce = true; // Set flag after successful processing
+                hasProcessedOnce = true;
             } else {
                 showMessage('No data to display after processing.', true);
             }
@@ -417,9 +533,8 @@
 
         function handleFileSelect(file) {
             if (file && file.type.startsWith('image/')) {
-                if (hasProcessedOnce) { // If a previous process happened, reset first
+                if (hasProcessedOnce) {
                     resetForm();
-                    // hasProcessedOnce will be reset to false within resetForm
                 }
                 selectedFile = file; 
                 fileNameSpan.textContent = file.name; 
@@ -444,7 +559,7 @@
             filenameOutputDiv.classList.add('text-slate-200');
             imageInput.value = ''; selectedFile = null; fileNameSpan.textContent = 'No file chosen';
             showMessage('Form reset.');
-            hasProcessedOnce = false; // Reset the flag
+            hasProcessedOnce = false;
         }
 
         pasteButton.addEventListener('click', async () => {
@@ -453,7 +568,7 @@
                     const text = await navigator.clipboard.readText();
                     dataInput.value = text; imageInput.value = ''; selectedFile = null; fileNameSpan.textContent = 'No file chosen';
                     showMessage('Text pasted successfully!');
-                    hasProcessedOnce = false; // Pasting text is like a new start
+                    hasProcessedOnce = false; 
                 } catch (err) { console.error('Clipboard read failed: ', err); showMessage('Failed to paste. Check permissions or HTTPS.', true, 4000); }
             } else { showMessage('Clipboard paste not available/supported (requires HTTPS).', true, 4000); }
         });
@@ -528,11 +643,28 @@
                 showMessage('Processing image... this may take a moment.', false, 10000);
                 showProcessingState(true);
                 try {
-                    const { data: { text } } = await Tesseract.recognize(imageFile, 'eng', { logger: m => console.log(m) });
-                    console.log("OCR Result:", text); processInputText(text);
-                } catch (error) { console.error("OCR Error:", error); showMessage(`Error during image processing: ${error.message || 'Unknown error'}`, true, 5000); outputSection.classList.add('hidden'); }
-                finally { showProcessingState(false); }
-            } else { showMessage('Please paste text or upload an image first.', true); outputSection.classList.add('hidden'); }
+                    const { data: { text } } = await Tesseract.recognize(
+                        imageFile, 
+                        'eng',
+                        {
+                            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE, 
+                            preserve_interword_spaces: '1', 
+                        }
+                    );
+                    console.log("OCR Result:", text); 
+                    processInputText(text);
+                } catch (error) { 
+                    console.error("OCR Error:", error); 
+                    showMessage(`Error during image processing: ${error.message || 'Unknown error'}`, true, 5000); 
+                    outputSection.classList.add('hidden'); 
+                }
+                finally { 
+                    showProcessingState(false); 
+                }
+            } else { 
+                showMessage('Please paste text or upload an image first.', true); 
+                outputSection.classList.add('hidden'); 
+            }
         });
 
         copyFilenameButton.addEventListener('click', () => {
