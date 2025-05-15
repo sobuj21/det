@@ -271,7 +271,11 @@
             if (keyIndex === -1) return null;
             let valueStartIndex = keyIndex + key.length;
             const potentialNextKeys = ["SKU:", "Font Style:", "Your custom text:", "Text Color:", "Text Outline Color:", "Size:"];
-            const linesToIgnorePatterns = [/^Customizations:/i, /^Surface 1:/i, /^(Please\s+)?ing?nore\s+this\s+color/i];
+            const linesToIgnorePatterns = [
+                /^Customizations:/i,
+                /^Surface 1:/i,
+                /^(?:Please\s+)?ignore\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front))?)?)?$/i
+            ];
             let earliestNextKeyIndex = text.length;
             for (const nextKey of potentialNextKeys) {
                 const currentNextKeyIndex = text.indexOf(nextKey, valueStartIndex);
@@ -287,7 +291,9 @@
             const filteredLines = valueLines.filter(line => {
                 const trimmedLine = line.trim();
                 if (trimmedLine === '') return false;
-                for (const pattern of linesToIgnorePatterns) { if (pattern.test(trimmedLine)) return false; }
+                for (const pattern of linesToIgnorePatterns) { 
+                    if (pattern.test(trimmedLine)) return false; 
+                }
                 return true;
             });
             
@@ -297,6 +303,12 @@
             } else {
                 finalValue = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
             }
+
+            if (key === "Font Style:" && finalValue) {
+                const trailingIgnorePattern = /\s+(?:please\s+)?ignore\s+this\s+color(?:.*)?$/i;
+                finalValue = finalValue.replace(trailingIgnorePattern, '').trim();
+            }
+            
             return finalValue || null;
         }
 
@@ -309,8 +321,9 @@
 
         function parseColorValue(colorValue) {
             if (!colorValue) return { descriptive: null, hex: null };
-            const ignorePattern = /^(Please\s+)?ing?nore\s+this\s+color.*?:?\s*/i;
-            let cleanedValue = colorValue.replace(ignorePattern, '');
+            const ignorePattern = /^(?:Please\s+)?ignore\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front))?)?)?.*$/i;
+            let cleanedValue = colorValue.replace(ignorePattern, '').trim();
+            
             const hex = extractHexCode(cleanedValue);
             let descriptive = cleanedValue;
             if (hex) {
@@ -419,8 +432,6 @@
 
         function sanitizeForFilename(filenamePart) {
             if (!filenamePart) return "";
-            // Characters forbidden in Windows filenames: < > : " / \ | ? *
-            // Also, control characters (0-31)
             return filenamePart.replace(/[<>:"/\\|?*\x00-\x1F]/g, '');
         }
 
@@ -514,7 +525,7 @@
             const skuPart = `(${skuForFilename})`;
 
             let assembledFilename = `${customTextPart}${tcPart}${tocPart}${sizePart}${skuPart}`;
-            generatedFilename = sanitizeForFilename(assembledFilename); // Sanitize the fully assembled string
+            generatedFilename = sanitizeForFilename(assembledFilename);
 
             filenameOutputDiv.textContent = generatedFilename;
             filenameOutputDiv.classList.remove('text-red-400');
