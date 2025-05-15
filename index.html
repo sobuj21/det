@@ -274,7 +274,7 @@
             const linesToIgnorePatterns = [
                 /^Customizations:/i,
                 /^Surface 1:/i,
-                /^(?:Please\s+)?ignore\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front))?)?)?$/i
+                /^(?:Please\s+)?(?:ignore|ingnore)\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front|from))?)?)?$/i
             ];
             let earliestNextKeyIndex = text.length;
             for (const nextKey of potentialNextKeys) {
@@ -297,16 +297,21 @@
                 return true;
             });
             
-            let finalValue;
-            if (key === "Your custom text:") {
-                finalValue = filteredLines.join(' ').trim();
-            } else {
-                finalValue = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
+            let joinedValue = filteredLines.join(' ').trim();
+
+            if (key === "Font Style:" && joinedValue) {
+                const ignorePhrasePattern = /(?:please\s+)?(?:ignore|ingnore)\s+this\s+color/i;
+                const matchIndex = joinedValue.search(ignorePhrasePattern);
+                if (matchIndex !== -1) {
+                    joinedValue = joinedValue.substring(0, matchIndex).trim();
+                }
             }
 
-            if (key === "Font Style:" && finalValue) {
-                const trailingIgnorePattern = /\s+(?:please\s+)?ignore\s+this\s+color(?:.*)?$/i;
-                finalValue = finalValue.replace(trailingIgnorePattern, '').trim();
+            let finalValue;
+            if (key === "Your custom text:") {
+                finalValue = joinedValue; 
+            } else {
+                finalValue = joinedValue.replace(/\s+/g, ' ').trim();
             }
             
             return finalValue || null;
@@ -321,7 +326,7 @@
 
         function parseColorValue(colorValue) {
             if (!colorValue) return { descriptive: null, hex: null };
-            const ignorePattern = /^(?:Please\s+)?ignore\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front))?)?)?.*$/i;
+            const ignorePattern = /^(?:Please\s+)?(?:ignore|ingnore)\s+this\s+color(?:\s+and(?:\s+select(?:\s+(?:fron|front|from))?)?)?.*$/i;
             let cleanedValue = colorValue.replace(ignorePattern, '').trim();
             
             const hex = extractHexCode(cleanedValue);
