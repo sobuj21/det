@@ -382,38 +382,60 @@
         function formatSizeForDisplayAndFilename(rawSizeString) {
             if (!rawSizeString) return { display: null, filenamePart: "" };
 
-            let cleanedString = rawSizeString.replace(/Option to Add Complimentary Free Squeegee/gi, "").trim();
+            let mainSizeString = rawSizeString.replace(/Option to Add Complimentary Free Squeegee/gi, "").trim();
             
-            const dimensions = [];
-            const regex = /(\d+\.?\d*)\s*("|\u201D|inch(?:es)?)\s*(?:\(\s*(height|length|width|h|l|w)\s*\))?/gi;
+            const foundDimensions = [];
+            // Regex: value (group 1), unit (group 2), optional type in parens (group 3) OR optional type as word (group 4)
+            const dimensionRegexGlobal = /(\d+\.?\d*)\s*("|\u201D|inch(?:es)?)(?:\s*\(\s*([^)]+?)\s*\)|(?:\s+(height|length|width|h|l|w|long))?)?/gi;
             let match;
 
-            while ((match = regex.exec(cleanedString)) !== null) {
+            while ((match = dimensionRegexGlobal.exec(mainSizeString)) !== null) {
                 const value = match[1];
                 let type = null;
-                if (match[3]) {
-                    const typeStr = match[3].toLowerCase();
-                    if (typeStr.startsWith('l')) type = 'L';
-                    else if (typeStr.startsWith('h')) type = 'H';
-                    else if (typeStr.startsWith('w')) type = 'W';
+                const contentInParens = match[3]; 
+                const standaloneTypeWord = match[4]; 
+                let typeCandidateRaw = "";
+
+                if (contentInParens) {
+                    typeCandidateRaw = contentInParens;
+                } else if (standaloneTypeWord) {
+                    typeCandidateRaw = standaloneTypeWord;
                 }
-                dimensions.push({ value, unit: "INCH", type });
+                
+                if (typeCandidateRaw) {
+                    let typeCandidateCleaned = typeCandidateRaw.toLowerCase().replace(/[^a-z]/g, ''); // Keep only letters
+                    if (typeCandidateCleaned.includes("len") || typeCandidateCleaned === "l" || typeCandidateCleaned === "long") type = 'L';
+                    else if (typeCandidateCleaned.includes("hei") || typeCandidateCleaned === "h") type = 'H';
+                    else if (typeCandidateCleaned.includes("wid") || typeCandidateCleaned === "w") type = 'W';
+                }
+                foundDimensions.push({ value, unit: "INCH", type });
             }
             
-            let lengthDim = dimensions.find(d => d.type === 'L');
-            let heightDim = dimensions.find(d => d.type === 'H');
-            let widthDim = dimensions.find(d => d.type === 'W');
+            let lengthDim = foundDimensions.find(d => d.type === 'L');
+            let heightDim = foundDimensions.find(d => d.type === 'H');
+            let widthDim = foundDimensions.find(d => d.type === 'W');
+            
+            const untypedDims = foundDimensions.filter(d => d.type === null && d.value);
+
+            if (untypedDims.length > 0) {
+                if (!lengthDim && untypedDims.length > 0) {
+                    lengthDim = untypedDims.shift();
+                    if(lengthDim) lengthDim.type = 'L';
+                }
+                if (!heightDim && untypedDims.length > 0) {
+                    heightDim = untypedDims.shift();
+                     if(heightDim) heightDim.type = 'H';
+                }
+                if (!widthDim && untypedDims.length > 0) {
+                    widthDim = untypedDims.shift();
+                    if(widthDim) widthDim.type = 'W';
+                }
+            }
 
             const displayParts = [];
-            if (lengthDim) {
-                displayParts.push(`${lengthDim.value} ${lengthDim.unit} ${lengthDim.type}`);
-            }
-            if (widthDim) {
-                displayParts.push(`${widthDim.value} ${widthDim.unit} ${widthDim.type}`);
-            }
-            if (heightDim) {
-                displayParts.push(`${heightDim.value} ${heightDim.unit} ${heightDim.type}`);
-            }
+            if (lengthDim) displayParts.push(`${lengthDim.value} ${lengthDim.unit} ${lengthDim.type}`);
+            if (widthDim) displayParts.push(`${widthDim.value} ${widthDim.unit} ${widthDim.type}`);
+            if (heightDim) displayParts.push(`${heightDim.value} ${heightDim.unit} ${heightDim.type}`);
 
             if (displayParts.length > 0) {
                 const finalDisplay = displayParts.join(' ');
@@ -422,14 +444,21 @@
                     filenamePart: finalDisplay 
                 };
             } else {
-                let fallbackDisplay = cleanedString;
+                let fallbackDisplay = mainSizeString.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
                 fallbackDisplay = fallbackDisplay.replace(/\bINCHES\b/gi, 'INCH').replace(/\s*("|\u201D)\s*/g, ' INCH ').trim();
-                
-                let fallbackFilenamePart = cleanedString;
-                fallbackFilenamePart = fallbackFilenamePart.replace(/\bLONG\b/gi, 'L');
-                fallbackFilenamePart = fallbackFilenamePart.replace(/\bHEIGHT\b/gi, 'H');
-                fallbackFilenamePart = fallbackFilenamePart.replace(/\bINCHES\b/gi, 'INCH');
-                fallbackFilenamePart = fallbackFilenamePart.replace(/\s*("|\u201D)\s*/g, 'INCH'); 
+                fallbackDisplay = fallbackDisplay.replace(/[^a-zA-Z0-9\s.-]/g, ' ').replace(/\s+/g, ' ').trim(); 
+
+                let fallbackFilenamePart = fallbackDisplay;
+                if (/\b(length|long)\b/i.test(fallbackFilenamePart) && !fallbackFilenamePart.includes(" L")) {
+                    fallbackFilenamePart = fallbackFilenamePart.replace(/\b(length|long)\b/gi, 'L');
+                }
+                if (/\bheight\b/i.test(fallbackFilenamePart) && !fallbackFilenamePart.includes(" H")) {
+                    fallbackFilenamePart = fallbackFilenamePart.replace(/\bheight\b/gi, 'H');
+                }
+                 if (/\bwidth\b/i.test(fallbackFilenamePart) && !fallbackFilenamePart.includes(" W")) {
+                    fallbackFilenamePart = fallbackFilenamePart.replace(/\bwidth\b/gi, 'W');
+                }
+                fallbackFilenamePart = fallbackFilenamePart.replace(/\bINCH\b/gi, 'INCH');
                 
                 return { display: fallbackDisplay.trim() || null, filenamePart: fallbackFilenamePart.trim() || "" };
             }
@@ -467,10 +496,6 @@
                 const parsedSizeInfo = formatSizeForDisplayAndFilename(rawValues.size);
                 displaySize = parsedSizeInfo.display;
                 filenameSizeForPart = parsedSizeInfo.filenamePart;
-
-                if (filenameSizeForPart) {
-                    filenameSizeForPart = filenameSizeForPart.replace(/\bLONG\b/gi, 'L').replace(/\bHEIGHT\b/gi, 'H');
-                }
             }
 
             const finalValues = { 
