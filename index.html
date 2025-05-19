@@ -282,7 +282,7 @@
             'rosy brown': '#BC8F8F', 'sandy brown': '#F4A460', 'goldenrod': '#DAA520', 'dark goldenrod': '#B8860B', 
             'peru': '#CD853F', 'chocolate': '#D2691E', 'saddle brown': '#8B4513', 'sienna': '#A0522D', 
             'brown': '#A52A2A', 'matte brown': '#5D4037', 'metallic copper': '#D1793B', 'metallic brown': '#3E2723', 
-            'maroon': '#800000', 'zinnwaldite brown': '#2C1608', 'white': '#FFFFFF', 'matte white': '#E6E9E9', 
+            'maroon': '#800000', 'zinnwaldite brown': '#2C1608', 'white': '#E6E9E9', 'matte white': '#E6E9E9', 
             'metallic white': '#ECEFF1', 'snow': '#FFFAFA', 'honey dew': '#F0FFF0', 'mint cream': '#F5FFFA', 
             'azure': '#F0FFFF', 'alice blue': '#F0F8FF', 'ghost white': '#F8F8FF', 'white smoke': '#F5F5F5', 
             'sea shell': '#FFF5EE', 'beige': '#F5F5DC', 'old lace': '#FDF5E6', 'floral white': '#FFFAF0', 
@@ -387,7 +387,7 @@
             const keyIndex = text.indexOf(key);
             if (keyIndex === -1) return null;
             let valueStartIndex = keyIndex + key.length;
-            const potentialNextKeys = ["SKU:", "Font Style:", "Your custom text:", "Text Color:", "Text Outline Color:", "Size:"];
+            const potentialNextKeys = ["SKU:", "Font Style:", "Your custom text:", "Text Color:", "Text Outline Color:", "Size:", "Colors:", "Outline Colors:"];
             const linesToIgnorePatterns = [
                 /^Customizations:/i,
                 /^Surface 1:/i,
@@ -564,7 +564,10 @@
             let customTextPart = currentProcessedData.customText || "NoText";
             let tcFilenamePart = cleanColorNameForFilename(currentProcessedData.textColorDescriptive);
             let tocFilenamePart = "";
-            if (currentProcessedData.originalInputText && (currentProcessedData.originalInputText.toLowerCase().includes("text outline color:") || (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== ""))) {
+            if (currentProcessedData.originalInputText && 
+                (currentProcessedData.originalInputText.toLowerCase().includes("text outline color:") || currentProcessedData.originalInputText.toLowerCase().includes("outline colors:")) || 
+                (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== "")
+            ) {
                  tocFilenamePart = cleanColorNameForFilename(currentProcessedData.outlineColorDescriptive);
             }
             let sizeForFilename = currentFilenameSizePart || "";
@@ -600,11 +603,14 @@
                     const parsedSizeInfo = formatSizeForDisplayAndFilename(newValue);
                     currentProcessedData.size = parsedSizeInfo.display; 
                     currentFilenameSizePart = parsedSizeInfo.filenamePart; 
-                    valueSpan.textContent = currentProcessedData.size || ""; 
                 } else if (dataKey === 'textColorDescriptive') {
                     currentProcessedData.textColorHex = extractHexCode(newValue) || null; 
                 } else if (dataKey === 'outlineColorDescriptive') {
                     currentProcessedData.outlineColorHex = extractHexCode(newValue) || null;
+                } else if (dataKey === 'textColorHex') {
+                    currentProcessedData.textColorHex = newValue; 
+                } else if (dataKey === 'outlineColorHex') {
+                    currentProcessedData.outlineColorHex = newValue; 
                 }
                 
                 refreshOutputDisplay(); 
@@ -686,10 +692,14 @@
             let displayOutlineColorDescriptiveClean = cleanColorNameForDisplay(currentProcessedData.outlineColorDescriptive);
             
             let textColorHexForDisplay = currentProcessedData.textColorHex;
-            if (displayTextColorDescriptiveClean.toLowerCase() === 'white' && (!textColorHexForDisplay || textColorHexForDisplay.toUpperCase() !== '#E6E9E9')) {
+            if (displayTextColorDescriptiveClean?.toLowerCase() === 'white') {
                 textColorHexForDisplay = '#E6E9E9';
                 isTextColorHexSuggestedOrInvalidForDisplay = true;
-            } else if (!isValidHex(textColorHexForDisplay)) {
+            } else if (displayTextColorDescriptiveClean?.toLowerCase() === 'black') {
+                textColorHexForDisplay = null; 
+                isTextColorHexSuggestedOrInvalidForDisplay = false;
+            }
+            else if (!isValidHex(textColorHexForDisplay)) {
                 const suggested = commonColorHexMap[displayTextColorDescriptiveClean?.toLowerCase()];
                 textColorHexForDisplay = suggested || "N/A";
                 isTextColorHexSuggestedOrInvalidForDisplay = true;
@@ -697,12 +707,19 @@
 
 
             let outlineColorHexForDisplay = currentProcessedData.outlineColorHex;
-             if (currentProcessedData.originalInputText.toLowerCase().includes("text outline color:") || (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== "") || (currentProcessedData.outlineColorHex && currentProcessedData.outlineColorHex.trim() !== "")) {
-                if (!isValidHex(outlineColorHexForDisplay)) {
+            const outlineLabelPresentInInput = currentProcessedData.originalInputText.toLowerCase().includes("text outline color:") || currentProcessedData.originalInputText.toLowerCase().includes("outline colors:");
+             if (outlineLabelPresentInInput || (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== "") || (currentProcessedData.outlineColorHex && currentProcessedData.outlineColorHex.trim() !== "")) {
+                if (displayOutlineColorDescriptiveClean?.toLowerCase() === 'black') {
+                    outlineColorHexForDisplay = null; 
+                    isOutlineColorHexSuggestedOrInvalidForDisplay = false;
+                } else if (!isValidHex(outlineColorHexForDisplay)) {
                     const suggested = commonColorHexMap[displayOutlineColorDescriptiveClean?.toLowerCase()];
                     outlineColorHexForDisplay = suggested || "N/A";
                     isOutlineColorHexSuggestedOrInvalidForDisplay = true;
                 }
+            } else {
+                displayOutlineColorDescriptiveClean = null; 
+                outlineColorHexForDisplay = null;
             }
 
 
@@ -727,11 +744,17 @@
             addRow('Font Style', currentProcessedData.fontStyle, 'fontStyle', currentProcessedData.fontStyle); 
             addRow('Your custom text', currentProcessedData.customText, 'customText', currentProcessedData.customText, customTextNeedsReviewForDisplay); 
             addRow('Text Color', displayTextColorDescriptiveClean, 'textColorDescriptive', displayTextColorDescriptiveClean); 
-            addRow('Text Hex Code', textColorHexForDisplay, 'textColorHex', textColorHexForDisplay, isTextColorHexSuggestedOrInvalidForDisplay); 
+            if (textColorHexForDisplay !== null) {
+                addRow('Text Hex Code', textColorHexForDisplay, 'textColorHex', textColorHexForDisplay, isTextColorHexSuggestedOrInvalidForDisplay); 
+            }
             
-            if (currentProcessedData.originalInputText.toLowerCase().includes("text outline color:") || (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== "") || (currentProcessedData.outlineColorHex && currentProcessedData.outlineColorHex.trim() !== "") ) {
-                addRow('Text Outline Color', displayOutlineColorDescriptiveClean, 'outlineColorDescriptive', displayOutlineColorDescriptiveClean); 
-                addRow('Text Outline Hex Code', outlineColorHexForDisplay, 'outlineColorHex', outlineColorHexForDisplay, isOutlineColorHexSuggestedOrInvalidForDisplay); 
+            if (outlineLabelPresentInInput || (currentProcessedData.outlineColorDescriptive && currentProcessedData.outlineColorDescriptive.trim() !== "") || (currentProcessedData.outlineColorHex && currentProcessedData.outlineColorHex.trim() !== "") ) {
+                 if(displayOutlineColorDescriptiveClean || outlineColorHexForDisplay) { 
+                    addRow('Text Outline Color', displayOutlineColorDescriptiveClean, 'outlineColorDescriptive', displayOutlineColorDescriptiveClean); 
+                    if (outlineColorHexForDisplay !== null) {
+                        addRow('Text Outline Hex Code', outlineColorHexForDisplay, 'outlineColorHex', outlineColorHexForDisplay, isOutlineColorHexSuggestedOrInvalidForDisplay); 
+                    }
+                }
             }
             addRow('Size', currentProcessedData.size, 'size', currentProcessedData.size);
 
@@ -742,13 +765,13 @@
                 if (!currentProcessedData.customText || customTextNeedsReviewForDisplay) { 
                     if (!fieldsWithIssues.includes("Custom Text")) fieldsWithIssues.push("Custom Text");
                 }
-                if (currentProcessedData.originalInputText.toLowerCase().includes("text color:")) {
+                if (currentProcessedData.originalInputText.toLowerCase().includes("text color:") || currentProcessedData.originalInputText.toLowerCase().includes("colors:")) {
                     if (!displayTextColorDescriptiveClean) fieldsWithIssues.push("Text Color Name");
-                    if (isTextColorHexSuggestedOrInvalidForDisplay && textColorHexForDisplay === "N/A") fieldsWithIssues.push("Text Hex Code");
+                    if (isTextColorHexSuggestedOrInvalidForDisplay && textColorHexForDisplay === "N/A" && displayTextColorDescriptiveClean?.toLowerCase() !== 'black' && displayTextColorDescriptiveClean?.toLowerCase() !== 'white') fieldsWithIssues.push("Text Hex Code");
                 }
-                if (currentProcessedData.originalInputText.toLowerCase().includes("text outline color:")) {
+                if (outlineLabelPresentInInput) {
                      if (!displayOutlineColorDescriptiveClean) fieldsWithIssues.push("Outline Color Name");
-                     if (isOutlineColorHexSuggestedOrInvalidForDisplay && outlineColorHexForDisplay === "N/A") fieldsWithIssues.push("Outline Hex Code");
+                     if (isOutlineColorHexSuggestedOrInvalidForDisplay && outlineColorHexForDisplay === "N/A" && displayOutlineColorDescriptiveClean?.toLowerCase() !== 'black' && displayOutlineColorDescriptiveClean?.toLowerCase() !== 'white') fieldsWithIssues.push("Outline Hex Code");
                 }
                 const hasLength = currentProcessedData.size && currentProcessedData.size.includes(" L");
                 const hasHeight = currentProcessedData.size && currentProcessedData.size.includes(" H");
@@ -795,11 +818,21 @@
             ocrWarningHint.textContent = '';
 
 
-            const keys = { sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:", textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:" };
+            const primaryKeys = {
+                sku: "SKU:", fontStyle: "Font Style:", customText: "Your custom text:",
+                textColorFull: "Text Color:", outlineColorFull: "Text Outline Color:", size: "Size:"
+            };
+            const alternativeKeys = {
+                textColorFull: "Colors:", outlineColorFull: "Outline Colors:"
+            };
             const rawValues = {};
-            for (const prop in keys) {
-                rawValues[prop] = extractValue(inputText, keys[prop]);
+            for (const prop in primaryKeys) {
+                rawValues[prop] = extractValue(inputText, primaryKeys[prop]);
+                if (rawValues[prop] === null && alternativeKeys[prop]) {
+                    rawValues[prop] = extractValue(inputText, alternativeKeys[prop]);
+                }
             }
+
 
             if (rawValues.sku === "Wind-5C-25") {
                 rawValues.sku = "Wind-SC-25";
