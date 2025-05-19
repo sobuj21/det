@@ -395,7 +395,6 @@
             let mainSizeString = rawSizeString.replace(/Option to Add Complimentary Free Squeegee/gi, "").trim();
             
             const foundDimensions = [];
-            // Regex: value (group 1), unit (group 2), optional type in parens (group 3) OR optional type as word (group 4)
             const dimensionRegexGlobal = /(\d+\.?\d*)\s*("|\u201D|inch(?:es)?)(?:\s*\(\s*([^)]+?)\s*\)|(?:\s+(height|length|width|h|l|w|long))?)?/gi;
             let match;
 
@@ -502,6 +501,10 @@
                 rawValues[prop] = extractValue(inputText, keys[prop]);
             }
 
+            if (rawValues.sku === "Wind-5C-25") {
+                rawValues.sku = "Wind-SC-25";
+            }
+
             const textColorParsed = parseColorValue(rawValues.textColorFull);
             const outlineColorParsed = parseColorValue(rawValues.outlineColorFull);
             
@@ -525,10 +528,27 @@
             };
             
             const fieldsWithIssues = [];
+            let customTextNeedsReview = false; 
+
             if (selectedFile) { 
                 if (!finalValues.sku) fieldsWithIssues.push("SKU");
                 if (!finalValues.fontStyle) fieldsWithIssues.push("Font Style");
-                if (!finalValues.customText) fieldsWithIssues.push("Custom Text");
+                
+                let customTextIsProblematicForWarning = false;
+                if (!finalValues.customText) {
+                    customTextIsProblematicForWarning = true;
+                } else {
+                    const spacedCapsRegex = /(?:\b[A-Z]\s){1,}[A-Z]\b/; 
+                    const potentialAcronymErrorRegex = /[A-Z][a-z][A-Z]/; 
+                    if (spacedCapsRegex.test(finalValues.customText) || potentialAcronymErrorRegex.test(finalValues.customText)) {
+                        customTextNeedsReview = true; 
+                        customTextIsProblematicForWarning = true; 
+                    }
+                }
+                if (customTextIsProblematicForWarning && !fieldsWithIssues.includes("Custom Text")) { // Ensure it's added only once
+                    fieldsWithIssues.push("Custom Text");
+                }
+
                 if (!cleanColorNameForFilename(finalValues.textColorDescriptive)) fieldsWithIssues.push("Text Color");
                 
                 if (inputText.toLowerCase().includes("text outline color:") && !cleanColorNameForFilename(finalValues.outlineColorDescriptive)) {
@@ -537,10 +557,8 @@
                 
                 const hasLength = finalValues.size && finalValues.size.includes(" L");
                 const hasHeight = finalValues.size && finalValues.size.includes(" H");
-                if (!finalValues.size || !(hasLength && hasHeight)) {
-                     if (inputText.toLowerCase().includes("size:")) { // Only add Size issue if "Size:" was in OCR
-                        fieldsWithIssues.push("Size");
-                    }
+                if (inputText.toLowerCase().includes("size:") && (!finalValues.size || !(hasLength && hasHeight))) {
+                     fieldsWithIssues.push("Size");
                 }
                 
                 if (fieldsWithIssues.length > 0) {
@@ -551,16 +569,9 @@
 
 
             let hasOutput = false;
-            let customTextNeedsReview = false;
-            if (finalValues.customText) {
-                const spacedCapsRegex = /(?:\b[A-Z]\s){1,}[A-Z]\b/;
-                if (spacedCapsRegex.test(finalValues.customText)) {
-                    customTextNeedsReview = true;
-                }
-            }
 
-            function addRow(label, value, copyValue = null, needsReview = false) {
-                const row = createOutputRow(label, value, copyValue, needsReview);
+            function addRow(label, value, copyValue = null, needsReviewFlag = false) {
+                const row = createOutputRow(label, value, copyValue, needsReviewFlag);
                 if (row) { extractedInfoDiv.appendChild(row); hasOutput = true; }
             }
             addRow('SKU', finalValues.sku); 
