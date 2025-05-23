@@ -276,7 +276,7 @@
             'medium orchid': '#BA55D3', 'medium purple': '#9370DB', 'rebecca purple': '#663399', 'blue violet': '#8A2BE2', 
             'dark violet': '#9400D3', 'dark orchid': '#9932CC', 'dark magenta': '#8B008B', 'purple': '#800080', 
             'matte purple': '#7B1FA2', 'metallic purple': '#4A148C', 'indigo': '#4B0082', 'slate blue': '#6A5ACD', 
-            'dark slate blue': '#483D8B', 'burgundy': '#800020', 'matte burgundy': '#691C2D', 
+            'dark slate blue': '#483D8B', 'burgundy': '#800020', 'matte burgundy': '#691C2D', 'glossy burgundy': '#800020',
             'african violet': '#B284BE', 'cornsilk': '#FFF8DC', 'blanched almond': '#FFEBCD', 'bisque': '#FFE4C4', 
             'navajo white': '#FFDEAD', 'wheat': '#F5DEB3', 'burly wood': '#DEB887', 'tan': '#D2B48C', 
             'rosy brown': '#BC8F8F', 'sandy brown': '#F4A460', 'goldenrod': '#DAA520', 'dark goldenrod': '#B8860B', 
@@ -469,6 +469,12 @@
             cleaned = cleaned.replace(/[^a-zA-Z0-9\s-]/g, '');
             cleaned = cleaned.replace(/\s+/g, ' ').trim();
             return cleaned;
+        }
+        
+        function getCanonicalColorName(colorName) {
+            if (!colorName) return "";
+            const cleaned = cleanColorNameForDisplay(colorName).toLowerCase();
+            return cleaned.split(/\s+/).filter(Boolean).sort().join(" ");
         }
 
 
@@ -701,8 +707,18 @@
                 isTextColorHexSuggestedOrInvalidForDisplay = false;
             }
             else if (!isValidHex(textColorHexForDisplay)) {
-                const suggested = commonColorHexMap[displayTextColorDescriptiveClean?.toLowerCase()];
-                textColorHexForDisplay = suggested || "N/A";
+                const canonicalOcrColorName = getCanonicalColorName(displayTextColorDescriptiveClean);
+                let foundMatch = false;
+                if (canonicalOcrColorName) {
+                    for (const mapKey in commonColorHexMap) {
+                        if (getCanonicalColorName(mapKey) === canonicalOcrColorName) {
+                            textColorHexForDisplay = commonColorHexMap[mapKey];
+                            foundMatch = true;
+                            break;
+                        }
+                    }
+                }
+                if (!foundMatch) textColorHexForDisplay = "N/A";
                 isTextColorHexSuggestedOrInvalidForDisplay = true;
             }
 
@@ -713,9 +729,23 @@
                 if (displayOutlineColorDescriptiveClean?.toLowerCase() === 'black') {
                     outlineColorHexForDisplay = null; 
                     isOutlineColorHexSuggestedOrInvalidForDisplay = false;
-                } else if (!isValidHex(outlineColorHexForDisplay)) {
-                    const suggested = commonColorHexMap[displayOutlineColorDescriptiveClean?.toLowerCase()];
-                    outlineColorHexForDisplay = suggested || "N/A";
+                } else if (displayOutlineColorDescriptiveClean?.toLowerCase() === 'white') {
+                    outlineColorHexForDisplay = '#E6E9E9';
+                    isOutlineColorHexSuggestedOrInvalidForDisplay = true;
+                }
+                 else if (!isValidHex(outlineColorHexForDisplay)) {
+                    const canonicalOcrOutlineColorName = getCanonicalColorName(displayOutlineColorDescriptiveClean);
+                    let foundOutlineMatch = false;
+                    if (canonicalOcrOutlineColorName) {
+                        for (const mapKey in commonColorHexMap) {
+                           if (getCanonicalColorName(mapKey) === canonicalOcrOutlineColorName) {
+                                outlineColorHexForDisplay = commonColorHexMap[mapKey];
+                                foundOutlineMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!foundOutlineMatch) outlineColorHexForDisplay = "N/A";
                     isOutlineColorHexSuggestedOrInvalidForDisplay = true;
                 }
             } else {
